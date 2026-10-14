@@ -1,0 +1,2753 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+  <title>MTQ-ATTENDEASE — QR Attendance & Assessment System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --teal-900: #0B3230;
+      --teal-800: #0E3E3B;
+      --teal-700: #134B47;
+      --teal-600: #1D7874;
+      --teal-400: #3FB6AC;
+      --teal-200: #BFE7E2;
+      --teal-100: #EAF7F5;
+      --gold-500: #D9A441;
+      --gold-600: #C08B2C;
+      --ink-900: #0F2523;
+      --ink-700: #3A5652;
+      --ink-400: #7C948F;
+      --bg: #F5F9F8;
+      --white: #ffffff;
+      --danger: #C24C4C;
+      --danger-bg: #FBEAEA;
+      --ok: #2E8B57;
+      --ok-bg: #E8F6EE;
+      --warn: #B8860B;
+      --warn-bg: #FBF3DE;
+      --radius: 14px;
+      --shadow: 0 6px 24px rgba(11, 50, 48, 0.10);
+      --font-head: 'Fraunces', serif;
+      --font-body: 'Inter', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--ink-900);
+      font-family: var(--font-body);
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    h1,
+    h2,
+    h3,
+    .headfont {
+      font-family: var(--font-head);
+      font-weight: 600;
+      color: var(--teal-900);
+      margin: 0;
+    }
+
+    button {
+      font-family: var(--font-body);
+      cursor: pointer;
+    }
+
+    input,
+    select,
+    textarea {
+      font-family: var(--font-body);
+    }
+
+    a {
+      color: inherit;
+    }
+
+    #app {
+      min-height: 100vh;
+    }
+
+    .auth-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at 20% 20%, var(--teal-700), var(--teal-900) 70%);
+      padding: 20px;
+    }
+
+    .auth-card {
+      background: var(--white);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      width: 100%;
+      max-width: 420px;
+      padding: 36px 30px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 22px;
+    }
+
+    .brand .mark {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, var(--teal-600), var(--teal-400));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-family: var(--font-head);
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .brand .name {
+      font-family: var(--font-head);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--teal-900);
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink-700);
+      margin-bottom: 6px;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1.5px solid #DDEAE8;
+      border-radius: 10px;
+      font-size: 14.5px;
+      background: #FBFDFD;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      outline: none;
+      border-color: var(--teal-400);
+    }
+
+    .pw-wrap {
+      position: relative;
+    }
+
+    .pw-wrap button {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--teal-600);
+      font-size: 12.5px;
+      font-weight: 600;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 11px 18px;
+      border-radius: 10px;
+      border: none;
+      font-weight: 600;
+      font-size: 14.5px;
+      transition: transform .08s ease;
+    }
+
+    .btn:active {
+      transform: scale(.97);
+    }
+
+    .btn-primary {
+      background: var(--teal-700);
+      color: #fff;
+      width: 100%;
+      padding: 13px;
+    }
+
+    .btn-primary:hover {
+      background: var(--teal-800);
+    }
+
+    .btn-gold {
+      background: var(--gold-500);
+      color: #3A2900;
+    }
+
+    .btn-gold:hover {
+      background: var(--gold-600);
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1.5px solid var(--teal-600);
+      color: var(--teal-700);
+    }
+
+    .btn-outline:hover {
+      background: var(--teal-100);
+    }
+
+    .btn-danger {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--teal-700);
+    }
+
+    .btn-sm {
+      padding: 7px 12px;
+      font-size: 13px;
+      border-radius: 8px;
+    }
+
+    .link-btn {
+      background: none;
+      border: none;
+      color: var(--teal-600);
+      font-weight: 600;
+      font-size: 13.5px;
+      padding: 0;
+    }
+
+    .msg {
+      font-size: 13px;
+      padding: 10px 12px;
+      border-radius: 8px;
+      margin-bottom: 14px;
+    }
+
+    .msg-err {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .msg-ok {
+      background: var(--ok-bg);
+      color: var(--ok);
+    }
+
+    .switch-line {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 13.5px;
+      color: var(--ink-700);
+    }
+
+    .pw-strength {
+      height: 5px;
+      border-radius: 4px;
+      background: #E5EFED;
+      margin-top: 6px;
+      overflow: hidden;
+    }
+
+    .pw-strength i {
+      display: block;
+      height: 100%;
+      transition: width .2s;
+    }
+
+    .hint {
+      font-size: 11.5px;
+      color: var(--ink-400);
+      margin-top: 5px;
+    }
+
+    .shell {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .sidebar {
+      width: 236px;
+      background: linear-gradient(180deg, var(--teal-800), var(--teal-900));
+      color: #EAF6F4;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 20px 14px;
+    }
+
+    .sidebar .brand {
+      color: #fff;
+      padding: 0 6px;
+      margin-bottom: 26px;
+    }
+
+    .sidebar .brand .name {
+      color: #fff;
+      font-size: 19px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      color: #CFE9E5;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 3px;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+
+    .nav-item .ic {
+      width: 18px;
+      text-align: center;
+    }
+
+    .nav-item:hover {
+      background: rgba(255, 255, 255, 0.07);
+    }
+
+    .nav-item.active {
+      background: rgba(255, 255, 255, 0.14);
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .sidebar-foot {
+      margin-top: auto;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      padding-top: 12px;
+    }
+
+    .main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 26px;
+      background: var(--white);
+      border-bottom: 1px solid #E7F0EE;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .topbar .title {
+      font-family: var(--font-head);
+      font-size: 20px;
+      color: var(--teal-900);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .bell {
+      position: relative;
+      background: none;
+      border: none;
+      font-size: 19px;
+      color: var(--teal-700);
+    }
+
+    .bell .dot {
+      position: absolute;
+      top: -2px;
+      right: -2px;
+      background: var(--danger);
+      color: #fff;
+      border-radius: 50%;
+      width: 16px;
+      height: 16px;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .avatar {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--gold-500);
+      color: #3A2900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13.5px;
+    }
+
+    .content {
+      padding: 22px 26px 90px;
+      flex: 1;
+    }
+
+    .hamburger {
+      display: none;
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--teal-800);
+    }
+
+    .bottom-nav {
+      display: none;
+    }
+
+    @media (max-width:880px) {
+      .sidebar {
+        position: fixed;
+        left: -260px;
+        top: 0;
+        bottom: 0;
+        z-index: 50;
+        transition: left .2s;
+        box-shadow: 0 0 30px rgba(0, 0, 0, .25);
+      }
+
+      .sidebar.open {
+        left: 0;
+      }
+
+      .hamburger {
+        display: inline-block;
+      }
+
+      .hide-mobile {
+        display: none !important;
+      }
+
+      .content {
+        padding: 16px 14px 90px;
+      }
+
+      .topbar {
+        padding: 12px 14px;
+      }
+
+      .bottom-nav {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: #fff;
+        border-top: 1px solid #E7F0EE;
+        z-index: 30;
+        padding: 6px 2px;
+        justify-content: space-around;
+      }
+
+      .bottom-nav button {
+        background: none;
+        border: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        font-size: 10px;
+        color: var(--ink-400);
+        padding: 5px 2px;
+        flex: 1;
+      }
+
+      .bottom-nav button.active {
+        color: var(--teal-700);
+        font-weight: 700;
+      }
+
+      .bottom-nav .ic {
+        font-size: 17px;
+      }
+
+      .overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, .35);
+        z-index: 40;
+      }
+    }
+
+    .grid {
+      display: grid;
+      gap: 16px;
+    }
+
+    .grid-4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .grid-3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .grid-2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media(max-width:880px) {
+
+      .grid-4,
+      .grid-3,
+      .grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    @media(max-width:520px) {
+
+      .grid-4,
+      .grid-3,
+      .grid-2 {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .card {
+      background: #fff;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+
+    .stat .num {
+      font-family: var(--font-head);
+      font-size: 30px;
+      color: var(--teal-800);
+    }
+
+    .stat .lbl {
+      font-size: 12.5px;
+      color: var(--ink-400);
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 11.5px;
+      font-weight: 700;
+    }
+
+    .pill-ok {
+      background: var(--ok-bg);
+      color: var(--ok);
+    }
+
+    .pill-warn {
+      background: var(--warn-bg);
+      color: var(--warn);
+    }
+
+    .pill-danger {
+      background: var(--danger-bg);
+      color: var(--danger);
+    }
+
+    .pill-neutral {
+      background: var(--teal-100);
+      color: var(--teal-700);
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+
+    th {
+      text-align: left;
+      color: var(--ink-400);
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+      padding: 8px 10px;
+      border-bottom: 1.5px solid #EAF2F0;
+    }
+
+    td {
+      padding: 10px 10px;
+      border-bottom: 1px solid #F1F6F5;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+    }
+
+    .empty {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--ink-400);
+    }
+
+    .empty .big {
+      font-size: 34px;
+      margin-bottom: 8px;
+    }
+
+    .class-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--teal-100);
+      color: var(--teal-800);
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 13px;
+      margin: 0 8px 8px 0;
+    }
+
+    .row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .between {
+      justify-content: space-between;
+    }
+
+    .wrap {
+      flex-wrap: wrap;
+    }
+
+    #modalRoot {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    #modalRoot.show {
+      display: flex;
+    }
+
+    .modal-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(11, 50, 48, 0.45);
+    }
+
+    .modal-box {
+      position: relative;
+      background: #fff;
+      border-radius: 18px;
+      max-width: 460px;
+      width: 100%;
+      max-height: 88vh;
+      overflow-y: auto;
+      padding: 26px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, .3);
+    }
+
+    .modal-close {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: none;
+      border: none;
+      font-size: 18px;
+      color: var(--ink-400);
+    }
+
+    .qr-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    #qrCanvasHolder {
+      background: #fff;
+      padding: 14px;
+      border-radius: 12px;
+      border: 2px solid var(--teal-200);
+    }
+
+    .timer {
+      font-family: var(--font-head);
+      font-size: 38px;
+      color: var(--teal-800);
+    }
+
+    video {
+      width: 100%;
+      border-radius: 12px;
+      background: #000;
+      max-height: 340px;
+      object-fit: cover;
+    }
+
+    .scan-status {
+      text-align: center;
+      font-weight: 700;
+      padding: 10px;
+      border-radius: 10px;
+      margin-top: 10px;
+    }
+
+    .toast-wrap {
+      position: fixed;
+      top: 16px;
+      right: 16px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .toast {
+      background: var(--teal-800);
+      color: #fff;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 13.5px;
+      box-shadow: var(--shadow);
+      min-width: 220px;
+      animation: slidein .2s ease;
+    }
+
+    @keyframes slidein {
+      from {
+        transform: translateX(30px);
+        opacity: 0;
+      }
+
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+
+    .toast.err {
+      background: var(--danger);
+    }
+
+    .toast.ok {
+      background: var(--ok);
+    }
+
+    .notif-item {
+      padding: 12px;
+      border-radius: 10px;
+      background: var(--teal-100);
+      margin-bottom: 8px;
+      font-size: 13.5px;
+    }
+
+    .thumb {
+      height: 72px;
+      width: 56px;
+      object-fit: contain;
+      border-radius: 6px;
+      border: 1px solid #DDEAE8;
+      cursor: zoom-in;
+      background: #fff;
+      vertical-align: middle;
+    }
+
+    .img-missing {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 6px 10px;
+      border-radius: 8px;
+      border: 1px dashed #D5E3E0;
+      color: var(--ink-400);
+      font-size: 12px;
+      background: #FAFCFC;
+    }
+
+    .modal-box.modal-wide {
+      max-width: min(960px, 96vw);
+    }
+
+    .viewer-stage {
+      position: relative;
+      height: 72vh;
+      overflow: auto;
+      border-radius: 10px;
+      background: #1C2B2A;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .viewer-stage.zoomed {
+      display: block;
+      cursor: zoom-out;
+    }
+
+    .viewer-img {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      cursor: zoom-in;
+      transition: transform .15s ease;
+    }
+
+    .viewer-stage.zoomed .viewer-img {
+      max-width: none;
+      max-height: none;
+      width: 200%;
+      cursor: zoom-out;
+    }
+
+    .score-input {
+      width: 92px;
+      padding: 6px 8px;
+      border: 1.5px solid #DDEAE8;
+      border-radius: 8px;
+    }
+
+    table.report th, table.report td {
+      white-space: nowrap;
+      text-align: center;
+    }
+
+    table.report th:first-child, table.report td:first-child,
+    table.report th:nth-child(2), table.report td:nth-child(2) {
+      text-align: left;
+    }
+
+    table.report .sub {
+      background: var(--teal-100);
+      font-weight: 600;
+    }
+
+    table.report th.att-head {
+      background: #FFF7E6;
+    }
+
+    table.report .att {
+      background: #FFFBF2;
+    }
+
+    table.report td.att-absent {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    table.report td.editable {
+      cursor: pointer;
+    }
+
+    table.report td.editable:hover {
+      background: #FFF7E6;
+    }
+
+    .captured-img {
+      display: block;
+      width: 100%;
+      border-radius: 10px;
+      margin-top: 10px;
+      max-height: 280px;
+      object-fit: contain;
+      background: #F5F9F8;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+      border-bottom: 1.5px solid #EAF2F0;
+      flex-wrap: wrap;
+    }
+
+    .tab {
+      padding: 9px 14px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--ink-400);
+      background: none;
+      border: none;
+      border-bottom: 2.5px solid transparent;
+      margin-bottom: -1.5px;
+    }
+
+    .tab.active {
+      color: var(--teal-800);
+      border-color: var(--teal-600);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--ink-400);
+    }
+  </style>
+</head>
+
+<body>
+  <div id="app"></div>
+  <div id="modalRoot">
+    <div class="modal-backdrop" onclick="closeModal()"></div>
+    <div class="modal-box" id="modalBox"></div>
+  </div>
+  <div class="toast-wrap" id="toastWrap"></div>
+
+  <script>
+    /* ============================= API LAYER ============================= */
+
+    const API_BASE = '/api';
+    let TOKEN = localStorage.getItem('cs_token') || null;
+
+    async function api(path, opts = {}) {
+      const headers = { 'Accept': 'application/json', ...(opts.headers || {}) };
+      if (opts.body && !(opts.body instanceof FormData)) { headers['Content-Type'] = 'application/json'; }
+      if (TOKEN) { headers['Authorization'] = 'Bearer ' + TOKEN; }
+      const res = await fetch(API_BASE + path, { ...opts, headers });
+      let data = null;
+      const text = await res.text();
+      try { data = text ? JSON.parse(text) : null; } catch (e) { data = text; }
+      if (!res.ok) {
+        const err = new Error((data && data.message) || 'Request failed');
+        err.status = res.status; err.data = data;
+        throw err;
+      }
+      return data;
+    }
+    function setToken(t) {
+      TOKEN = t; if (t) localStorage.setItem('cs_token', t); else localStorage.removeItem('cs_token');
+      if (typeof IMG_CACHE !== 'undefined') Object.keys(IMG_CACHE).forEach(k => { IMG_CACHE[k].then(u => URL.revokeObjectURL(u)).catch(() => { }); delete IMG_CACHE[k]; });
+    }
+
+    /* ============================= STATE / CACHE ============================= */
+    let ST = { user: null, authView: 'login', authRole: 'student', page: 'dashboard', activeClassId: null, sidebarOpen: false, camStream: null, pendingCapture: null };
+    let CACHE = { classes: [], notifications: [], myAttendance: [], myAssessments: [], classDetail: null };
+
+    function esc(s) { return (s ?? '').toString().replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m])); }
+    function toast(msg, type = '') {
+      const el = document.createElement('div'); el.className = 'toast ' + type; el.textContent = msg;
+      document.getElementById('toastWrap').appendChild(el);
+      setTimeout(() => el.remove(), 3800);
+    }
+    function apiErrorToast(e) { toast((e && e.message) || 'Something went wrong.', 'err'); }
+    function passwordPolicyText() { return '8–64 characters, with uppercase, lowercase, a number, and a special character.'; }
+    function checkPasswordStrength(pw) {
+      const checks = { len: pw.length >= 8 && pw.length <= 64, upper: /[A-Z]/.test(pw), lower: /[a-z]/.test(pw), num: /[0-9]/.test(pw), special: /[^A-Za-z0-9]/.test(pw) };
+      return { ok: Object.values(checks).every(Boolean), score: Object.values(checks).filter(Boolean).length };
+    }
+    // Student choices (the server accepts only these values)
+    const SECTIONS = ['A', 'B', 'C'];
+    const COURSES = [['BSIT', 'BSIT (Information Technology)']];
+    const YEAR_LEVELS = ['1st Year', '2nd Year', '3rd Year', '4th Year'];
+
+    /** Dropdown of fixed choices; a saved value matching case-insensitively (e.g. "4th year") is preselected. */
+    function choiceSelect(id, choices, current, placeholder) {
+      const norm = v => String(v || '').trim().toLowerCase();
+      const hit = choices.find(([v]) => norm(v) === norm(current));
+      const cur = hit ? hit[0] : '';
+      return `<select id="${id}" required>
+        <option value="" ${cur ? '' : 'selected'} disabled>${placeholder}</option>
+        ${choices.map(([v, l]) => `<option value="${esc(v)}" ${cur === v ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>`;
+    }
+    const sectionSelect = (id, current = '') => choiceSelect(id, SECTIONS.map(s => [s, 'Section ' + s]), current, 'Choose section');
+    const courseSelect = (id, current = '') => choiceSelect(id, COURSES, current, 'Choose course');
+    const yearSelect = (id, current = '') => choiceSelect(id, YEAR_LEVELS.map(y => [y, y]), current, 'Choose year');
+    /** Hint shown when an older free-typed value isn't one of the choices. */
+    function legacyHint(saved, valid) {
+      return saved && !valid.some(v => v.toLowerCase() === String(saved).trim().toLowerCase())
+        ? `<div class="hint">Your saved value "${esc(saved)}" isn't in the list — please choose one.</div>` : '';
+    }
+    function classById(id) { return CACHE.classes.find(c => String(c.id) === String(id)); }
+
+    /* ============================= SUBMITTED PHOTOS (served only to the signed-in teacher / owner) ============================= */
+    const IMG_CACHE = {};
+    function fetchAuthImage(url) {
+      if (!IMG_CACHE[url]) {
+        IMG_CACHE[url] = fetch(url, { headers: { 'Authorization': 'Bearer ' + TOKEN, 'Accept': 'image/*' } })
+          .then(async res => {
+            if (!res.ok) {
+              let msg = res.status === 403 ? 'You cannot view this image.' : 'Image not available.';
+              try { msg = (await res.json()).message || msg; } catch (e) { }
+              throw new Error(msg);
+            }
+            return URL.createObjectURL(await res.blob());
+          });
+        IMG_CACHE[url].catch(() => { delete IMG_CACHE[url]; });
+      }
+      return IMG_CACHE[url];
+    }
+    /** Markup for a submission photo thumbnail; click opens the full-size viewer. */
+    function authImg(url, caption = '', cls = 'thumb', style = '') {
+      if (!url) return '<span class="img-missing">No photo</span>';
+      return `<img data-auth-src="${esc(url)}" data-caption="${esc(caption)}" class="${cls}" style="${style}" alt="${esc(caption || 'Submitted photo')}" title="Click to enlarge" onclick="openImageViewer(this.dataset.authSrc, this.dataset.caption)">`;
+    }
+    function hydrateAuthImages(root = document) {
+      root.querySelectorAll('img[data-auth-src]:not([data-loading])').forEach(img => {
+        img.dataset.loading = '1';
+        fetchAuthImage(img.dataset.authSrc)
+          .then(src => { img.src = src; })
+          .catch(err => {
+            const span = document.createElement('span');
+            span.className = 'img-missing'; span.textContent = err.message || 'Image not available.';
+            img.replaceWith(span);
+          });
+      });
+    }
+    new MutationObserver(() => hydrateAuthImages()).observe(document.documentElement, { childList: true, subtree: true });
+
+    let VIEWER = { rot: 0 };
+    function openImageViewer(url, caption) {
+      VIEWER = { rot: 0 };
+      openModal(`<h3 style="margin-bottom:10px;padding-right:28px;">${esc(caption || 'Submitted photo')}</h3>
+    <div id="viewerBody"><div class="loading" style="padding:30px;">Loading image…</div></div>`, true);
+      fetchAuthImage(url)
+        .then(src => {
+          const b = document.getElementById('viewerBody'); if (!b) return;
+          b.innerHTML = `<div class="viewer-stage" id="viewerStage" onclick="toggleViewerZoom(event)"><img src="${src}" id="viewerImg" class="viewer-img" alt="${esc(caption || 'Submitted photo')}"></div>
+      <div class="row between wrap" style="gap:8px;margin-top:10px;">
+        <div class="row" style="gap:8px;">
+          <button class="btn btn-outline btn-sm" onclick="rotateViewer(-90)">⟲ Rotate</button>
+          <button class="btn btn-outline btn-sm" onclick="rotateViewer(90)">⟳ Rotate</button>
+          <button class="btn btn-outline btn-sm" id="viewerZoomBtn" onclick="toggleViewerZoom()">🔍 Zoom in</button>
+        </div>
+        <a class="btn btn-outline btn-sm" href="${src}" target="_blank" rel="noopener">Open in new tab</a>
+      </div>
+      <div class="hint" style="margin-top:6px;">Click the picture to zoom; scroll to move around.</div>`;
+        })
+        .catch(err => { const b = document.getElementById('viewerBody'); if (b) b.innerHTML = `<div class="empty"><div class="big">🖼</div>${esc(err.message || 'Image not available.')}</div>`; });
+    }
+    function rotateViewer(deg) {
+      const img = document.getElementById('viewerImg'), stage = document.getElementById('viewerStage'); if (!img) return;
+      VIEWER.rot = (VIEWER.rot + deg + 360) % 360;
+      const sideways = VIEWER.rot % 180 !== 0;
+      // A sideways picture must fit the stage with its width and height swapped
+      if (sideways && !stage.classList.contains('zoomed')) {
+        const scale = Math.min(stage.clientHeight / img.offsetWidth, stage.clientWidth / img.offsetHeight, 1.6);
+        img.style.transform = `rotate(${VIEWER.rot}deg) scale(${scale})`;
+      } else {
+        img.style.transform = `rotate(${VIEWER.rot}deg)`;
+      }
+    }
+    function toggleViewerZoom(e) {
+      const stage = document.getElementById('viewerStage'); if (!stage) return;
+      const zoomed = stage.classList.toggle('zoomed');
+      const btn = document.getElementById('viewerZoomBtn'); if (btn) btn.textContent = zoomed ? '🔍 Fit to screen' : '🔍 Zoom in';
+      rotateViewer(0);
+      if (zoomed && e) {
+        const r = stage.getBoundingClientRect();
+        stage.scrollLeft = ((e.clientX - r.left) / r.width) * stage.scrollWidth - r.width / 2;
+        stage.scrollTop = ((e.clientY - r.top) / r.height) * stage.scrollHeight - r.height / 2;
+      }
+    }
+
+    /** "2026-10-14" -> "Oct 14, 2026" without timezone shifting. */
+    function fmtDate(ymd) {
+      if (!ymd) return '—';
+      const [y, m, d] = String(ymd).slice(0, 10).split('-').map(Number);
+      return new Date(y, m - 1, d).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    function fmtTime(iso) { return iso ? new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) : '—'; }
+    function todayYmd() { const d = new Date(), p = n => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; }
+
+    /* ============================= MODAL ============================= */
+    function openModal(html, wide = false) {
+      const box = document.getElementById('modalBox');
+      box.classList.toggle('modal-wide', wide);
+      box.innerHTML = '<button class="modal-close" onclick="closeModal()">✕</button>' + html;
+      document.getElementById('modalRoot').classList.add('show');
+    }
+    function closeModal() { stopCamera(); document.getElementById('modalRoot').classList.remove('show'); const box = document.getElementById('modalBox'); box.innerHTML = ''; box.classList.remove('modal-wide'); }
+
+    /* ============================= CAMERA ============================= */
+    function stopCamera() {
+      if (ST.camStream) { ST.camStream.getTracks().forEach(t => t.stop()); ST.camStream = null; }
+      if (window._scanRAF) { cancelAnimationFrame(window._scanRAF); window._scanRAF = null; }
+    }
+    async function requestCamera(videoEl, hiRes = false) {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        toast('Camera needs HTTPS (or localhost). Open the site over https://.', 'err'); return false;
+      }
+      try {
+        // Paper photos need a high resolution to keep handwriting readable; QR scanning doesn't
+        const video = hiRes ? { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1440 } } : { facingMode: 'environment' };
+        const stream = await navigator.mediaDevices.getUserMedia({ video });
+        ST.camStream = stream; videoEl.srcObject = stream; await videoEl.play(); return true;
+      } catch (e) { toast('Camera permission denied or unavailable.', 'err'); return false; }
+    }
+
+    /* ============================= AUTH ============================= */
+    function renderAuth() {
+      const app = document.getElementById('app');
+      if (ST.authView === 'verify') {
+        app.innerHTML = `
+    <div class="auth-wrap"><div class="auth-card">
+      <div class="brand"><div class="mark">AE</div><div class="name">MTQ-ATTENDEASE</div></div>
+      <h2 style="margin-bottom:4px;">Check your email</h2>
+      <p style="color:var(--ink-400);font-size:13.5px;margin:4px 0 20px;line-height:1.6;">We sent a 6-digit code to <b style="color:var(--ink-900);">${esc(ST.verifyEmail)}</b>. Enter it below to activate your account. The code expires in 15 minutes.</p>
+      <div id="authMsg"></div>
+      <form onsubmit="return doVerify(event)">
+        <div class="field"><label>Verification Code</label><input id="verifyCode" required inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="123456" style="font-size:22px;letter-spacing:8px;text-align:center;"></div>
+        <button class="btn btn-primary" type="submit">Verify &amp; Continue</button>
+      </form>
+      <div class="switch-line">Didn't get it? Check your spam folder, or <button class="link-btn" id="resendBtn" onclick="resendCode()">send a new code</button></div>
+      <div class="switch-line" style="margin-top:6px;"><button class="link-btn" onclick="ST.authView='login';renderAuth()">← Back to log in</button></div>
+    </div></div>`;
+        setTimeout(() => { const el = document.getElementById('verifyCode'); if (el) el.focus(); }, 50);
+        return;
+      }
+      if (ST.authView === 'login') {
+        app.innerHTML = `
+    <div class="auth-wrap"><div class="auth-card">
+      <div class="brand"><div class="mark">AE</div><div class="name">MTQ-ATTENDEASE</div></div>
+      <h2 style="margin-bottom:4px;">Welcome back</h2>
+      <p style="color:var(--ink-400);font-size:13.5px;margin:4px 0 20px;">Sign in to your MTQ-ATTENDEASE account.</p>
+      <div id="authMsg"></div>
+      <form onsubmit="return doLogin(event)">
+        <div class="field"><label>Email</label><input id="loginEmail" type="email" required placeholder="you@school.edu.ph"></div>
+        <div class="field"><label>Password</label><div class="pw-wrap">
+          <input id="loginPw" type="password" required placeholder="Enter password">
+          <button type="button" onclick="togglePw('loginPw',this)">Show</button>
+        </div></div>
+        <button class="btn btn-primary" type="submit">Log In</button>
+      </form>
+      <div class="switch-line">New here? <button class="link-btn" onclick="ST.authView='register';renderAuth()">Create an account</button></div>
+    </div></div>`;
+      } else {
+        app.innerHTML = `
+    <div class="auth-wrap"><div class="auth-card">
+      <div class="brand"><div class="mark">AE</div><div class="name">MTQ-ATTENDEASE</div></div>
+      <h2 style="margin-bottom:4px;">Create your account</h2>
+      <p style="color:var(--ink-400);font-size:13.5px;margin:4px 0 18px;">Register as a student or teacher.</p>
+      <div id="authMsg"></div>
+      <div class="tabs" style="margin-bottom:18px;">
+        <button class="tab ${ST.authRole === 'student' ? 'active' : ''}" onclick="ST.authRole='student';renderAuth()">Student</button>
+        <button class="tab ${ST.authRole === 'teacher' ? 'active' : ''}" onclick="ST.authRole='teacher';renderAuth()">Teacher</button>
+      </div>
+      <form onsubmit="return doRegister(event)">
+        <div class="field"><label>Full Name</label><input id="regName" required placeholder="Juan Dela Cruz"></div>
+        <div class="field"><label>${ST.authRole === 'student' ? 'Student ID' : 'Teacher ID'}</label><input id="regSchoolId" required placeholder="e.g. 2023-00123"></div>
+        <div class="field"><label>Email</label><input id="regEmail" type="email" required placeholder="you@school.edu.ph"></div>
+        ${ST.authRole === 'student' ? `
+          <div class="field"><label>Course</label>${courseSelect('regCourse')}</div>
+          <div class="row wrap">
+            <div class="field" style="flex:1;"><label>Year Level</label>${yearSelect('regYear')}</div>
+            <div class="field" style="flex:1;"><label>Section</label>${sectionSelect('regSection')}</div>
+          </div>` : `
+          <div class="field"><label>Department</label><input id="regDept" required placeholder="Information Technology Department"></div>`}
+        <div class="field"><label>Password</label><div class="pw-wrap">
+          <input id="regPw" type="password" required oninput="updatePwStrength()" placeholder="Create a password">
+          <button type="button" onclick="togglePw('regPw',this)">Show</button>
+        </div>
+        <div class="pw-strength"><i id="pwBar" style="width:0%;background:#ddd;"></i></div>
+        <div class="hint">${passwordPolicyText()}</div></div>
+        <div class="field"><label>Confirm Password</label><div class="pw-wrap">
+          <input id="regPw2" type="password" required placeholder="Re-enter password">
+          <button type="button" onclick="togglePw('regPw2',this)">Show</button>
+        </div></div>
+        <button class="btn btn-primary" type="submit">Register</button>
+      </form>
+      <div class="switch-line">Already have an account? <button class="link-btn" onclick="ST.authView='login';renderAuth()">Log in</button></div>
+    </div></div>`;
+      }
+    }
+    function togglePw(id, btn) { const el = document.getElementById(id); const show = el.type === 'password'; el.type = show ? 'text' : 'password'; btn.textContent = show ? 'Hide' : 'Show'; }
+    function updatePwStrength() {
+      const pw = document.getElementById('regPw').value; const { score } = checkPasswordStrength(pw);
+      const bar = document.getElementById('pwBar'); const colors = ['#e0665f', '#e0665f', '#E0A63B', '#E0A63B', '#3FB6AC', '#2E8B57'];
+      bar.style.width = (score / 5 * 100) + '%'; bar.style.background = colors[score];
+    }
+    function authMsg(text, type = 'err') { document.getElementById('authMsg').innerHTML = `<div class="msg msg-${type === 'err' ? 'err' : 'ok'}">${esc(text)}</div>`; }
+
+    async function doRegister(e) {
+      e.preventDefault();
+      const role = ST.authRole;
+      const payload = {
+        name: document.getElementById('regName').value.trim(),
+        school_id: document.getElementById('regSchoolId').value.trim(),
+        email: document.getElementById('regEmail').value.trim().toLowerCase(),
+        password: document.getElementById('regPw').value,
+        role,
+      };
+      const pw2 = document.getElementById('regPw2').value;
+      if (payload.password !== pw2) { authMsg('Passwords do not match.'); return false; }
+      if (role === 'student') {
+        payload.course = document.getElementById('regCourse').value;
+        payload.year_level = document.getElementById('regYear').value;
+        if (!payload.course) { authMsg('Please choose your course.'); return false; }
+        if (!payload.year_level) { authMsg('Please choose your year level.'); return false; }
+        payload.section = document.getElementById('regSection').value;
+        if (!SECTIONS.includes(payload.section)) { authMsg('Please choose your section (A, B, or C).'); return false; }
+      } else {
+        payload.department = document.getElementById('regDept').value.trim();
+      }
+      try {
+        const res = await api('/register', { method: 'POST', body: JSON.stringify(payload) });
+        showVerify(res.email || payload.email);
+      } catch (err) {
+        authMsg((err.data && err.data.message) || 'Could not register. Check your details.');
+      }
+      return false;
+    }
+    async function doLogin(e) {
+      e.preventDefault();
+      const email = document.getElementById('loginEmail').value.trim().toLowerCase();
+      const password = document.getElementById('loginPw').value;
+      try {
+        const data = await api('/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+        setToken(data.token);
+        ST.user = data.user; ST.page = 'dashboard'; ST.activeClassId = null;
+        await bootstrapData();
+        render();
+      } catch (err) {
+        if (err.status === 403 && err.data && err.data.verification_required) { showVerify(err.data.email || email, err.data.message); return false; }
+        authMsg((err.data && err.data.message) || 'Could not log in.');
+      }
+      return false;
+    }
+
+    /* ---- Email verification (6-digit code) ---- */
+    function showVerify(email, message) {
+      ST.authView = 'verify'; ST.verifyEmail = email; renderAuth();
+      if (message) authMsg(message, 'ok');
+    }
+    async function doVerify(e) {
+      e.preventDefault();
+      const code = document.getElementById('verifyCode').value.trim();
+      if (!/^\d{6}$/.test(code)) { authMsg('Enter the 6-digit code from your email.'); return false; }
+      try {
+        const data = await api('/email/verify', { method: 'POST', body: JSON.stringify({ email: ST.verifyEmail, code }) });
+        setToken(data.token);
+        ST.user = data.user; ST.page = 'dashboard'; ST.activeClassId = null; ST.authView = 'login';
+        await bootstrapData();
+        render(); toast('Email verified. Welcome!', 'ok');
+      } catch (err) {
+        if (err.status === 409) { ST.authView = 'login'; renderAuth(); authMsg(err.data.message, 'ok'); return false; }
+        authMsg((err.data && err.data.message) || 'Could not verify the code.');
+      }
+      return false;
+    }
+    async function resendCode() {
+      const btn = document.getElementById('resendBtn');
+      try {
+        const res = await api('/email/resend', { method: 'POST', body: JSON.stringify({ email: ST.verifyEmail }) });
+        authMsg(res.message, 'ok');
+        cooldownButton(btn, res.retry_after || 60, 'send a new code');
+      } catch (err) { authMsg((err.data && err.data.message) || 'Could not send a new code.'); }
+    }
+    function cooldownButton(btn, secs, label) {
+      if (!btn) return;
+      btn.disabled = true;
+      const tick = () => {
+        if (!document.body.contains(btn)) return;
+        if (secs <= 0) { btn.disabled = false; btn.textContent = label; return; }
+        btn.textContent = `${label} (${secs}s)`; secs--; setTimeout(tick, 1000);
+      };
+      tick();
+    }
+    async function doLogout() {
+      try { await api('/logout', { method: 'POST' }); } catch (e) { }
+      setToken(null); ST.user = null; ST.authView = 'login'; ST.page = 'dashboard'; render();
+    }
+
+    /* ============================= BOOTSTRAP ============================= */
+    async function bootstrapData() {
+      try {
+        const [classes, notifications] = await Promise.all([api('/classes'), api('/notifications')]);
+        CACHE.classes = classes; CACHE.notifications = notifications;
+        if (ST.user.role === 'student') {
+          const [myAttendance, myAssessments] = await Promise.all([api('/my-attendance'), api('/my-assessments')]);
+          CACHE.myAttendance = myAttendance; CACHE.myAssessments = myAssessments;
+        }
+      } catch (e) { apiErrorToast(e); }
+    }
+    async function tryRestoreSession() {
+      if (!TOKEN) return;
+      try {
+        ST.user = await api('/me');
+        await bootstrapData();
+      } catch (e) { setToken(null); ST.user = null; }
+    }
+
+    /* ============================= SHELL / NAV ============================= */
+    const STUDENT_NAV = [['dashboard', '⌂', 'Dashboard'], ['subjects', '📚', 'My Subjects'], ['scan', '▣', 'Scan QR'], ['attendance', '✓', 'Attendance'], ['assessments', '📝', 'Assessments'], ['notifications', '🔔', 'Notifications'], ['profile', '👤', 'Profile']];
+    const TEACHER_NAV = [['dashboard', '⌂', 'Dashboard'], ['classes', '🏫', 'My Classes'], ['reports', '📊', 'Reports'], ['notifications', '🔔', 'Notifications'], ['profile', '👤', 'Profile']];
+    function navFor() { return ST.user.role === 'student' ? STUDENT_NAV : TEACHER_NAV; }
+    function pageTitle() { const f = navFor().find(n => n[0] === ST.page); return f ? f[2] : 'MTQ-ATTENDEASE'; }
+    async function setPage(p) { ST.page = p; ST.sidebarOpen = false; ST.activeClassId = null; render(); await refreshForPage(); }
+    function unreadCount() { return CACHE.notifications.filter(n => !n.read).length; }
+
+    function render() {
+      if (!ST.user) { renderAuth(); return; }
+      const app = document.getElementById('app');
+      const nav = navFor();
+      app.innerHTML = `
+  <div class="shell">
+    ${ST.sidebarOpen ? `<div class="overlay" onclick="ST.sidebarOpen=false;render()"></div>` : ''}
+    <div class="sidebar ${ST.sidebarOpen ? 'open' : ''}">
+      <div class="brand"><div class="mark">AE</div><div class="name">MTQ-ATTENDEASE</div></div>
+      ${nav.map(n => `<button class="nav-item ${ST.page === n[0] ? 'active' : ''}" onclick="setPage('${n[0]}')"><span class="ic">${n[1]}</span> ${n[2]}</button>`).join('')}
+      <div class="sidebar-foot">
+        <button class="nav-item" onclick="setPage('settings')"><span class="ic">⚙</span> Settings</button>
+        <button class="nav-item" onclick="doLogout()"><span class="ic">⏻</span> Log Out</button>
+      </div>
+    </div>
+    <div class="main">
+      <div class="topbar">
+        <div class="row" style="gap:12px;"><button class="hamburger" onclick="ST.sidebarOpen=true;render()">☰</button><div class="title">${esc(pageTitle())}</div></div>
+        <div class="topbar-right">
+          <button class="bell" onclick="setPage('notifications')">🔔${unreadCount() > 0 ? `<span class="dot">${unreadCount()}</span>` : ''}</button>
+          <div class="avatar">${esc(ST.user.name.split(' ').map(w => w[0]).slice(0, 2).join(''))}</div>
+        </div>
+      </div>
+      <div class="content" id="pageContent"><div class="loading">Loading…</div></div>
+    </div>
+  </div>
+  <div class="bottom-nav">${nav.slice(0, 5).map(n => `<button class="${ST.page === n[0] ? 'active' : ''}" onclick="setPage('${n[0]}')"><span class="ic">${n[1]}</span>${n[2].split(' ')[0]}</button>`).join('')}</div>`;
+      renderPage();
+    }
+
+    async function refreshForPage() {
+      try {
+        if (ST.page === 'notifications') { CACHE.notifications = await api('/notifications'); await api('/notifications/mark-read', { method: 'POST' }); }
+        else if (ST.page === 'classes' || ST.page === 'dashboard') { CACHE.classes = await api('/classes'); }
+        else if (ST.page === 'attendance' && ST.user.role === 'student') { CACHE.myAttendance = await api('/my-attendance'); }
+        else if (ST.page === 'assessments' && ST.user.role === 'student') { CACHE.myAssessments = await api('/my-assessments'); }
+        else if (ST.page === 'dashboard' && ST.user.role === 'student') { CACHE.myAttendance = await api('/my-attendance'); }
+      } catch (e) { /* non-fatal */ }
+      renderPage();
+    }
+
+    function renderPage() {
+      const c = document.getElementById('pageContent'); if (!c) return;
+      const role = ST.user.role;
+      const map = role === 'student' ? {
+        dashboard: studentDashboard, subjects: studentSubjects, scan: studentScan, attendance: studentAttendance,
+        assessments: studentAssessments, notifications: pageNotifications, profile: pageProfile, settings: pageSettings
+      } : {
+        dashboard: teacherDashboard, classes: teacherClasses, reports: teacherReports,
+        notifications: pageNotifications, profile: pageProfile, settings: pageSettings
+      };
+      c.innerHTML = (map[ST.page] || map.dashboard)();
+    }
+
+    /* ============================= STUDENT: DASHBOARD ============================= */
+    function studentDashboard() {
+      const u = ST.user;
+      const classes = CACHE.classes.filter(c => c.status === 'approved');
+      const recent = (CACHE.myAttendance || []).filter(r => Number(r.stage) === 1).slice(0, 5);
+      return `
+  <div class="grid grid-4" style="margin-bottom:20px;">
+    <div class="card stat"><div class="num">${classes.length}</div><div class="lbl">Enrolled Subjects</div></div>
+    <div class="card stat"><div class="num">${CACHE.myAttendance.length}</div><div class="lbl">Attendance Records</div></div>
+    <div class="card stat"><div class="num">${CACHE.myAssessments.filter(a => a.my_submission).length}</div><div class="lbl">Submissions Made</div></div>
+    <div class="card stat"><div class="num">${unreadCount()}</div><div class="lbl">Unread Notifications</div></div>
+  </div>
+  <div class="grid grid-2">
+    <div class="card"><div class="section-title"><h3>My Subjects</h3><button class="btn btn-outline btn-sm" onclick="setPage('subjects')">Manage</button></div>
+      ${classes.length ? classes.map(c => `<div class="class-chip">${esc(c.name)} <span style="opacity:.7">(${esc(c.code)})</span></div>`).join('') : `<div class="empty"><div class="big">📚</div>No subjects yet.</div>`}</div>
+    <div class="card"><div class="section-title"><h3>Recent Attendance</h3><button class="btn btn-outline btn-sm" onclick="setPage('attendance')">View All</button></div>
+      ${recent.length ? recent.map(r => `<div class="row between" style="padding:8px 0;border-bottom:1px solid #F1F6F5;gap:10px;"><div><strong>${esc(r.class || '—')}</strong><div style="font-size:12px;color:var(--ink-400);">${fmtDate(r.session_date || r.scanned_at)}</div></div>${stuStatusPill(r.status)}</div>`).join('') : `<div class="empty"><div class="big">✓</div>No attendance recorded yet.</div>`}</div>
+  </div>
+  <div class="card" style="margin-top:16px;text-align:center;"><button class="btn btn-gold" style="padding:16px 30px;font-size:16px;" onclick="setPage('scan')">▣ Scan QR Code</button></div>`;
+    }
+
+    /* ============================= STUDENT: SUBJECTS ============================= */
+    function studentSubjects() {
+      if (ST.activeClassId) { return studentClassDetail(); }
+      const enrolled = CACHE.classes;
+      return `
+      <div class="card" style="margin-bottom:18px;"><h3 style="margin-bottom:10px;">Enter a Class Code</h3>
+        <form onsubmit="return enrollInClass(event)" class="row wrap" style="gap:10px;">
+          <input id="classCodeInput" placeholder="e.g. IT301-A9K2" style="flex:1;min-width:160px;padding:11px 12px;border:1.5px solid #DDEAE8;border-radius:10px;" required>
+          <button class="btn btn-primary" style="width:auto;" type="submit">Enroll</button>
+        </form></div>
+      <div class="section-title"><h3>My Subjects</h3></div>
+      <div class="grid grid-3">
+          ${enrolled.length ? enrolled.map(c => `<div class="card" ${c.status === 'approved' ? `style="cursor:pointer;" onclick="openStudentClass('${c.id}')"` : ''}>          <div class="row between"><h3 style="font-size:16px;">${esc(c.name)}</h3><span class="pill ${c.status === 'approved' ? 'pill-ok' : 'pill-warn'}">${c.status === 'approved' ? 'Approved' : 'Pending'}</span></div>
+          <div style="font-size:13px;color:var(--ink-400);margin-top:6px;">Code: <strong>${esc(c.code)}</strong></div>
+          <div style="margin-top:6px;">${classTags(c)}</div>
+          ${c.status === 'pending' ? '<div class="hint" style="margin-top:8px;">Waiting for teacher approval.</div>' : ''}
+        </div>`).join('') : `<div class="empty" style="grid-column:1/-1;"><div class="big">📚</div>No subjects yet.</div>`}
+      </div>`;
+    }
+
+    async function enrollInClass(e) {
+      e.preventDefault();
+      const code = document.getElementById('classCodeInput').value.trim().toUpperCase();
+      try {
+        await api('/classes/join', { method: 'POST', body: JSON.stringify({ code }) });
+        toast('Enrollment request sent. Waiting for teacher approval.', 'ok');
+        CACHE.classes = await api('/classes'); renderPage();
+      } catch (err) { apiErrorToast(err); }
+      return false;
+    }
+
+    /* ============================= STUDENT: SCAN QR ============================= */
+    function studentScan() {
+      return `<div class="card" style="max-width:520px;margin:0 auto;">
+    <h3 style="margin-bottom:6px;">Scan QR Code</h3>
+    <p style="color:var(--ink-400);font-size:13.5px;margin-bottom:16px;">Point your camera at your teacher's attendance QR code.</p>
+    <div><video id="scanVideo" playsinline muted></video></div>
+    <div id="scanStatus" class="scan-status" style="background:var(--teal-100);color:var(--teal-700);">Tap "Start Scanning" to begin.</div>
+    <div class="row" style="margin-top:12px;justify-content:center;gap:10px;">
+      <button class="btn btn-primary" style="width:auto;" onclick="startStudentScan()">Start Scanning</button>
+      <button class="btn btn-outline" style="width:auto;" onclick="stopCamera();document.getElementById('scanStatus').textContent='Stopped.'">Stop</button>
+    </div></div>`;
+    }
+    async function startStudentScan() {
+      const video = document.getElementById('scanVideo'); const statusEl = document.getElementById('scanStatus');
+      stopCamera();
+      if (!await requestCamera(video)) return;
+      statusEl.textContent = 'Scanning...'; statusEl.style.background = 'var(--teal-100)'; statusEl.style.color = 'var(--teal-700)';
+      const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d');
+      let busy = false;
+      function tick() {
+        if (!ST.camStream) return;
+        if (!busy && video.readyState === video.HAVE_ENOUGH_DATA) {
+          canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const code = jsQR(img.data, img.width, img.height);
+          if (code) { busy = true; handleScannedPayload(code.data, statusEl); return; }
+        }
+        window._scanRAF = requestAnimationFrame(tick);
+      }
+      window._scanRAF = requestAnimationFrame(tick);
+    }
+    function setScanStatus(el, text, type) {
+      el.textContent = text;
+      const colors = { ok: ['var(--ok-bg)', 'var(--ok)'], err: ['var(--danger-bg)', 'var(--danger)'], info: ['var(--teal-100)', 'var(--teal-700)'] };
+      el.style.background = colors[type][0]; el.style.color = colors[type][1];
+    }
+    async function handleScannedPayload(raw, statusEl) {
+      let payload;
+      try { payload = JSON.parse(raw); } catch (e) { setScanStatus(statusEl, 'Invalid QR Code.', 'err'); restartScanSoon(); return; }
+
+      if (payload.t === 'attendance') {
+        try {
+          const res = await api('/attendance/scan', { method: 'POST', body: JSON.stringify({ class_id: payload.classId, stage: payload.stage, token: payload.token }) });
+          stopCamera();
+          setScanStatus(statusEl, res.message, 'ok'); toast('Attendance recorded!', 'ok');
+          CACHE.myAttendance = await api('/my-attendance');
+        } catch (err) {
+          setScanStatus(statusEl, (err.data && err.data.message) || `Could not record attendance (${err.status ? 'server error ' + err.status : 'no connection'}).`, 'err');
+        }
+        return;
+      }
+      if (payload.t === 'assessment') {
+        setScanStatus(statusEl, 'Assessments no longer use QR codes. Open the subject in My Subjects and tap "Submit Photo".', 'err');
+        restartScanSoon(); return;
+      }
+      setScanStatus(statusEl, 'Invalid QR Code.', 'err'); restartScanSoon();
+    }
+    function restartScanSoon() { setTimeout(() => { if (document.getElementById('scanVideo')) startStudentScan(); }, 1600); }
+
+    /* ---- Paper capture flow (camera only) ---- */
+    function canSubmitPhoto(a) { return assessmentStatusKey(a) === 'open' && !a.is_verified; }
+    function submitPhotoButton(a) {
+      if (!canSubmitPhoto(a)) return '';
+      return `<button class="btn btn-gold btn-sm" style="width:auto;" onclick="startSubmission('${a.id}')">📷 ${a.submitted ? 'Retake Photo' : 'Submit Photo'}</button>`;
+    }
+    function startSubmission(id) {
+      const a = (CACHE.myAssessments || []).find(x => String(x.id) === String(id));
+      if (!a) return;
+      ST.pendingCapture = { assessmentId: a.id, title: a.title, type: a.type || 'quiz', classId: a.class_id };
+      openCaptureModal();
+    }
+    function openCaptureModal() {
+      const pc = ST.pendingCapture;
+      openModal(`
+    <h3 style="margin-bottom:4px;">Capture ${esc(pc.title)}</h3>
+    <p style="color:var(--ink-400);font-size:13px;margin-bottom:12px;">${esc(pc.type.toUpperCase())}</p>
+    <video id="capVideo" playsinline muted></video>
+    <canvas id="capCanvas" style="display:none;"></canvas>
+    <img id="capPreview" class="captured-img" style="display:none;">
+    <div class="row" style="margin-top:12px;justify-content:center;gap:10px;" id="capControls">
+      <button class="btn btn-primary" style="width:auto;" onclick="capturePhoto()">📷 Take Picture</button>
+    </div>`);
+      requestCamera(document.getElementById('capVideo'), true);
+    }
+    function capturePhoto() {
+      const video = document.getElementById('capVideo'); const canvas = document.getElementById('capCanvas');
+      if (!ST.camStream || !video.videoWidth) { toast('The camera is not ready yet. Allow camera access and try again.', 'err'); return; }
+      const scale = Math.min(1, 2000 / Math.max(video.videoWidth, video.videoHeight)); // keeps the upload well under the size limit
+      canvas.width = Math.round(video.videoWidth * scale); canvas.height = Math.round(video.videoHeight * scale);
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      document.getElementById('capPreview').src = dataUrl; document.getElementById('capPreview').style.display = 'block';
+      video.style.display = 'none'; stopCamera();
+      document.getElementById('capControls').innerHTML = `<button class="btn btn-outline" style="width:auto;" onclick="retakePhoto()">Retake</button><button class="btn btn-gold" style="width:auto;" onclick="submitCapture()">Submit</button>`;
+      window._capturedImage = dataUrl;
+    }
+    function retakePhoto() { openCaptureModal(); }
+    async function submitCapture() {
+      const pc = ST.pendingCapture;
+      try {
+        await api(`/assessments/${pc.assessmentId}/submit`, { method: 'POST', body: JSON.stringify({ image: window._capturedImage }) });
+        toast('Submission uploaded for teacher verification.', 'ok');
+        closeModal(); ST.pendingCapture = null;
+        CACHE.myAssessments = await api('/my-assessments'); renderPage();
+      } catch (err) { apiErrorToast(err); }
+    }
+
+    /* ============================= STUDENT: ATTENDANCE / ASSESSMENTS ============================= */
+    function studentAttendance() {
+      const rows = CACHE.myAttendance;
+      return `<div class="card"><div class="section-title"><h3>My Attendance</h3></div>
+    <div class="table-wrap"><table><thead><tr><th>Subject</th><th>Session Date</th><th>Type</th><th>Recorded</th><th>Status</th></tr></thead><tbody>
+    ${rows.length ? rows.map(r => `<tr><td>${esc(r.class || '—')}</td><td>${fmtDate(r.session_date)}${r.session_title ? `<div style="font-size:12px;color:var(--ink-400);">${esc(r.session_title)}</div>` : ''}</td><td>${esc(stageName(r.stage))}</td><td>${r.scanned_at ? fmtTime(r.scanned_at) : '<span style="color:var(--ink-400);">Set by teacher</span>'}</td><td>${stuStatusPill(r.status)}</td></tr>`).join('') : `<tr><td colspan="5"><div class="empty">No attendance records yet.</div></td></tr>`}
+    </tbody></table></div>
+    <div class="hint" style="margin-top:10px;">Open a subject in <b>My Subjects</b> to see every session, including ones you missed.</div></div>`;
+    }
+    function studentAssessments() {
+      const list = CACHE.myAssessments;
+      return `<div class="grid grid-2">
+  ${list.length ? list.map(a => {
+        const sub = a.my_submission;
+        return `<div class="card"><div class="row between"><h3 style="font-size:16px;">${esc(a.title)}</h3><span class="pill pill-neutral">${esc(a.type)}</span></div>
+      <div style="font-size:13px;color:var(--ink-400);margin:4px 0 10px;">${a.due_date ? `Due ${a.due_date}` : ''}</div>
+      <div style="margin-bottom:8px;">${studentScoreHtml(a)}</div>
+      ${sub ? `<span class="pill ${sub.verification === 'verified' ? 'pill-ok' : 'pill-warn'}">${sub.verification === 'verified' ? 'Checked by teacher' : 'Submitted — Pending Verification'}</span>
+        <div style="margin-top:10px;">${authImg(sub.image_url, a.title + ' — my submission', 'captured-img', 'max-height:140px;cursor:zoom-in;')}</div>` : `<div class="hint">${canSubmitPhoto(a) ? 'Take a picture of your paper to submit it.' : 'Not submitted.'}</div>`}
+      <div style="margin-top:10px;">${submitPhotoButton(a)}</div>
+    </div>`;
+      }).join('') : `<div class="empty" style="grid-column:1/-1;"><div class="big">📝</div>No assessments yet.</div>`}
+  </div>`;
+    }
+
+    /** A student's own score: hidden until the teacher releases it. */
+    function studentScoreHtml(a) {
+      if (!a.score_released) return '<span class="pill pill-neutral">Score not yet released</span>';
+      return `<span class="pill pill-ok">Score: ${a.score ?? 0}${a.total_points ? ' / ' + a.total_points : ''}</span>`;
+    }
+
+    /* ============================= NOTIFICATIONS / PROFILE / SETTINGS ============================= */
+    function pageNotifications() {
+      const list = [...CACHE.notifications].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      return `<div class="card"><h3 style="margin-bottom:14px;">Notifications</h3>
+    ${list.length ? list.map(n => `<div class="notif-item"><div>${esc(n.message)}</div><div style="font-size:11px;color:var(--ink-400);margin-top:4px;">${new Date(n.created_at).toLocaleString()}</div></div>`).join('') : `<div class="empty"><div class="big">🔔</div>No notifications.</div>`}</div>`;
+    }
+    function pageProfile() {
+      const u = ST.user;
+      const row = (label, val) => `<tr><td>${label}</td><td>${esc(val || '—')}</td></tr>`;
+      return `<div class="card" style="max-width:480px;">
+    <div class="avatar" style="width:64px;height:64px;font-size:22px;margin-bottom:14px;">${esc(u.name.split(' ').map(w => w[0]).slice(0, 2).join(''))}</div>
+    <h2 style="margin-bottom:4px;">${esc(u.name)}</h2>
+    <p style="color:var(--ink-400);margin-bottom:16px;">${u.role === 'student' ? 'Student' : 'Teacher'}${u.school_id ? ' · ' + esc(u.school_id) : ''}</p>
+    ${u.pending_email ? `<div class="msg msg-ok" style="margin-bottom:12px;">Waiting to confirm your new email <b>${esc(u.pending_email)}</b>. Your email stays ${esc(u.email)} until you enter the code. <button class="link-btn" onclick="openEmailCodeModal()">Enter code</button></div>` : ''}
+    <table>${row('Email', u.email)}${row('ID Number', u.school_id)}
+    ${u.role === 'student' ? row('Course', u.course) + row('Year', u.year_level) + row('Section', u.section) : row('Department', u.department)}
+    </table>
+    <button class="btn btn-outline btn-sm" style="margin-top:14px;" onclick="openEditProfileModal()">✎ Edit Profile</button></div>`;
+    }
+
+    function openEmailCodeModal() {
+      const u = ST.user;
+      openModal(`<h3 style="margin-bottom:8px;">Confirm your new email</h3>
+  <p style="font-size:13.5px;color:var(--ink-700);line-height:1.6;margin-bottom:14px;">We sent a 6-digit code to <b>${esc(u.pending_email)}</b>. Your email stays <b>${esc(u.email)}</b> until you enter it. We also told ${esc(u.email)} about this request.</p>
+  <form onsubmit="return confirmEmailChange(event)">
+    <div class="field"><label>Verification Code</label><input id="emailCode" required inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" style="font-size:20px;letter-spacing:6px;text-align:center;"></div>
+    <button class="btn btn-primary" type="submit">Confirm New Email</button></form>
+  <div class="row" style="gap:12px;margin-top:12px;flex-wrap:wrap;">
+    <button class="link-btn" id="emailResendBtn" onclick="resendEmailChange()">Send a new code</button>
+    <button class="link-btn" onclick="cancelEmailChange()">Cancel the change</button></div>`);
+    }
+    async function confirmEmailChange(e) {
+      e.preventDefault();
+      const code = document.getElementById('emailCode').value.trim();
+      if (!/^\d{6}$/.test(code)) { toast('Enter the 6-digit code from your email.', 'err'); return false; }
+      try {
+        ST.user = await api('/profile/email/verify', { method: 'POST', body: JSON.stringify({ code }) });
+        closeModal(); render(); toast('Email changed.', 'ok');
+      } catch (err) { apiErrorToast(err); }
+      return false;
+    }
+    function profileBody(email) {
+      const u = ST.user;
+      const b = { name: u.name, email, school_id: u.school_id };
+      if (u.role === 'student') Object.assign(b, { course: u.course, year_level: u.year_level, section: u.section });
+      else b.department = u.department;
+      return b;
+    }
+    async function resendEmailChange() {
+      const btn = document.getElementById('emailResendBtn');
+      try {
+        ST.user = await api('/profile', { method: 'PUT', body: JSON.stringify(profileBody(ST.user.pending_email)) });
+        toast('If a minute has passed, a new code was sent.', 'ok');
+        cooldownButton(btn, 60, 'Send a new code');
+      } catch (err) { apiErrorToast(err); }
+    }
+    async function cancelEmailChange() {
+      try {
+        ST.user = await api('/profile', { method: 'PUT', body: JSON.stringify(profileBody(ST.user.email)) });
+        closeModal(); render(); toast('Email change cancelled.', 'ok');
+      } catch (err) { apiErrorToast(err); }
+    }
+    function openEditProfileModal() {
+      const u = ST.user;
+      const f = (id, label, val, ph = '') => `<div class="field"><label>${label}</label><input id="${id}" value="${esc(val || '')}" placeholder="${ph}"></div>`;
+      openModal(`<h3 style="margin-bottom:14px;">Edit Profile</h3>
+    ${f('pfName', 'Full Name', u.name)}${f('pfEmail', 'Email', u.pending_email || u.email)}<div class="hint" style="margin:-8px 0 12px;">Changing your email sends a code to the new address; it only changes after you enter it.</div>${f('pfSchoolId', 'ID Number', u.school_id)}
+    ${u.role === 'student'
+          ? `<div class="field"><label>Course</label>${courseSelect('pfCourse', u.course)}${legacyHint(u.course, COURSES.map(c => c[0]))}</div>
+        <div class="field"><label>Year Level</label>${yearSelect('pfYear', u.year_level)}${legacyHint(u.year_level, YEAR_LEVELS)}</div>
+        <div class="field"><label>Section</label>${sectionSelect('pfSection', u.section)}${legacyHint(u.section, SECTIONS)}</div>`
+          : f('pfDept', 'Department', u.department)}
+    <button class="btn btn-primary" onclick="saveProfile()">Save Changes</button>`);
+    }
+    async function saveProfile() {
+      const v = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+      const body = { name: v('pfName'), email: v('pfEmail'), school_id: v('pfSchoolId') || null };
+      if (ST.user.role === 'student') Object.assign(body, { course: v('pfCourse') || null, year_level: v('pfYear') || null, section: v('pfSection') || null });
+      else body.department = v('pfDept') || null;
+      if (!body.name) { toast('Name is required.', 'err'); return; }
+      if (ST.user.role === 'student') {
+        if (!body.course) { toast('Please choose your course.', 'err'); return; }
+        if (!body.year_level) { toast('Please choose your year level.', 'err'); return; }
+        if (!SECTIONS.includes(body.section)) { toast('Please choose your section (A, B, or C).', 'err'); return; }
+      }
+      try {
+        const before = ST.user.pending_email;
+        ST.user = await api('/profile', { method: 'PUT', body: JSON.stringify(body) });
+        closeModal(); render();
+        if (ST.user.pending_email && ST.user.pending_email !== before) { toast('Profile saved. Check your new email for a code.', 'ok'); openEmailCodeModal(); }
+        else toast('Profile updated.', 'ok');
+      } catch (err) { apiErrorToast(err); }
+    }
+
+    function pageSettings() {
+      return `<div class="card" style="max-width:460px;"><h3 style="margin-bottom:14px;">Change Password</h3><div id="pwMsg"></div>
+    <form onsubmit="return changePassword(event)">
+      <div class="field"><label>Current Password</label><input type="password" id="curPw" required></div>
+      <div class="field"><label>New Password</label><input type="password" id="newPw" required oninput="updatePwStrengthSettings()">
+        <div class="pw-strength"><i id="pwBar2" style="width:0%;background:#ddd;"></i></div><div class="hint">${passwordPolicyText()}</div></div>
+      <div class="field"><label>Confirm New Password</label><input type="password" id="newPw2" required></div>
+      <button class="btn btn-primary" type="submit">Update Password</button>
+    </form></div>`;
+    }
+    function updatePwStrengthSettings() {
+      const pw = document.getElementById('newPw').value; const { score } = checkPasswordStrength(pw);
+      const bar = document.getElementById('pwBar2'); const colors = ['#e0665f', '#e0665f', '#E0A63B', '#E0A63B', '#3FB6AC', '#2E8B57'];
+      bar.style.width = (score / 5 * 100) + '%'; bar.style.background = colors[score];
+    }
+    async function changePassword(e) {
+      e.preventDefault();
+      const cur = document.getElementById('curPw').value, nw = document.getElementById('newPw').value, nw2 = document.getElementById('newPw2').value;
+      const msgEl = document.getElementById('pwMsg');
+      if (nw !== nw2) { msgEl.innerHTML = '<div class="msg msg-err">New passwords do not match.</div>'; return false; }
+      try {
+        await api('/change-password', { method: 'POST', body: JSON.stringify({ current_password: cur, new_password: nw }) });
+        msgEl.innerHTML = '<div class="msg msg-ok">Password updated successfully.</div>';
+      } catch (err) { msgEl.innerHTML = `<div class="msg msg-err">${esc((err.data && err.data.message) || 'Could not update password.')}</div>`; }
+      return false;
+    }
+
+    /* ============================= TEACHER: DASHBOARD ============================= */
+    function teacherDashboard() {
+      const classes = CACHE.classes;
+      const totalStudents = classes.reduce((n, c) => n + (c.approved_count || 0), 0);
+      const pending = classes.reduce((n, c) => n + (c.pending_count || 0), 0);
+      return `<div class="grid grid-4" style="margin-bottom:20px;">
+    <div class="card stat"><div class="num">${classes.length}</div><div class="lbl">My Classes</div></div>
+    <div class="card stat"><div class="num">${totalStudents}</div><div class="lbl">Total Students</div></div>
+    <div class="card stat"><div class="num">${pending}</div><div class="lbl">Pending Approvals</div></div>
+    <div class="card stat"><div class="num">${unreadCount()}</div><div class="lbl">Unread Notifications</div></div></div>
+  <div class="card"><div class="section-title"><h3>My Classes</h3><button class="btn btn-gold btn-sm" onclick="setPage('classes')">Manage Classes</button></div>
+    ${classes.length ? `<div class="grid grid-3">${classes.map(c => `<div class="card" style="box-shadow:none;border:1.5px solid #EAF2F0;cursor:pointer;" onclick="openClass('${c.id}')">
+      <h3 style="font-size:16px;">${esc(c.name)}</h3><div style="font-size:12.5px;color:var(--ink-400);margin-top:4px;">Code: ${esc(c.code)}</div>
+      <div style="margin-top:6px;">${classTags(c)}</div>
+      <div style="font-size:12.5px;color:var(--ink-400);">${c.approved_count || 0} students</div></div>`).join('')}</div>` : `<div class="empty"><div class="big">🏫</div>No classes yet.</div>`}</div>`;
+    }
+
+    /* ============================= TEACHER: CLASSES ============================= */
+    function teacherClasses() {
+      if (ST.activeClassId) { return renderClassDetail(); }
+      const classes = CACHE.classes;
+      return `<div class="section-title"><h3>My Classes</h3><button class="btn btn-gold btn-sm" onclick="openClassModal()">+ Create Class</button></div>
+  <div class="grid grid-3">${classes.length ? classes.map(c => `<div class="card" style="cursor:pointer;" onclick="openClass('${c.id}')">
+      <h3 style="font-size:16px;">${esc(c.name)}</h3>${classTags(c)}<div style="font-size:12.5px;color:var(--ink-400);margin:4px 0;">Code: <strong>${esc(c.code)}</strong></div>
+      <div class="row" style="gap:8px;margin-top:8px;"><span class="pill pill-ok">${c.approved_count || 0} enrolled</span>${c.pending_count ? `<span class="pill pill-warn">${c.pending_count} pending</span>` : ''}</div></div>`).join('') : `<div class="empty" style="grid-column:1/-1;"><div class="big">🏫</div>No classes yet.</div>`}
+  </div>`;
+    }
+    function openClassModal() {
+      openModal(`<h3 style="margin-bottom:14px;">Create Class</h3><form onsubmit="return createClass(event)">
+  <div class="field"><label>Subject Name</label><input id="clsName" required placeholder="e.g. Systems Integration and Architecture"></div>
+  <div class="field"><label>Year</label><input id="clsYear" placeholder="e.g. 3rd Year"></div>
+  <div class="field"><label>Section</label><input id="clsSection" placeholder="e.g. A"></div>
+  <button class="btn btn-primary" type="submit">Create</button></form>`);
+    }
+    async function createClass(e) {
+      e.preventDefault();
+      try {
+        await api('/classes', {
+          method: 'POST', body: JSON.stringify({
+            name: document.getElementById('clsName').value.trim(),
+            year_level: document.getElementById('clsYear').value.trim(),
+            section: document.getElementById('clsSection').value.trim()
+          })
+        });
+        CACHE.classes = await api('/classes'); closeModal(); toast('Class created.', 'ok'); renderPage();
+      } catch (err) { apiErrorToast(err); }
+      return false;
+    }
+
+    async function openClass(id, tab = 'students') {
+      ST.activeClassId = id; ST.page = 'classes'; CLASS_TAB = tab; ATT_SESSION_OPEN = null; ATT_SESSION = null; ATT_SECTION = '';
+      render();
+      await loadClassDetail(id);
+      if (tab === 'report') loadReportCard(id);
+    }
+    async function loadClassDetail(id) {
+      try {
+        const [students, records, assessments, session, sessions] = await Promise.all([
+          api(`/classes/${id}/students`), api(`/classes/${id}/attendance/records`),
+          api(`/classes/${id}/assessments`), api(`/classes/${id}/attendance/current`),
+          api(`/classes/${id}/sessions` + (ATT_SECTION ? `?section=${encodeURIComponent(ATT_SECTION)}` : ''))
+        ]);
+        CACHE.classDetail = { id, students, records, assessments, session: session ? normSession(session) : null, sessions };
+      } catch (e) { apiErrorToast(e); }
+      renderPage();
+    }
+    function backToClasses() { ST.activeClassId = null; CACHE.classDetail = null; renderPage(); }
+
+    let CLASS_TAB = 'students';
+    function renderClassDetail() {
+      const cd = CACHE.classDetail;
+      const c = classById(ST.activeClassId);
+      if (!c || !cd) return `<div class="loading">Loading class…</div>`;
+      const pending = cd.students.filter(s => s.status === 'pending');
+      const approved = cd.students.filter(s => s.status === 'approved');
+      let body = '';
+      if (CLASS_TAB === 'students') {
+        body = `
+      ${pending.length ? `<h3 style="font-size:14px;margin-bottom:8px;">Pending Approval (${pending.length})</h3>
+      <div class="table-wrap"><table><thead><tr><th>Name</th><th>Student ID</th><th></th></tr></thead><tbody>
+      ${pending.map(s => `<tr><td>${esc(s.student.name)}</td><td>${esc(s.student.school_id)}</td><td>
+        <button class="btn btn-primary btn-sm" style="width:auto;" onclick="approveStudent('${s.id}')">Approve</button>
+        <button class="btn btn-danger btn-sm" style="width:auto;" onclick="rejectStudent('${s.id}')">Reject</button></td></tr>`).join('')}
+      </tbody></table></div><div style="height:16px;"></div>`: ''}
+          ${enrolledSection(approved, c)}`;
+      } else if (CLASS_TAB === 'attendance') {
+        body = ATT_SESSION_OPEN ? sessionDetailHtml(c) : `<div class="row between" style="margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+    <div class="row wrap" style="gap:10px;">
+      <button class="btn btn-gold" style="width:auto;" onclick="openSessionModal()">+ New Session</button>
+      <button class="btn btn-outline" style="width:auto;" onclick="openStartAttendanceModal(1)">▣ Start Time In (today)</button>
+      <button class="btn btn-outline" style="width:auto;" onclick="openStartAttendanceModal(2)">▣ Start Time Out (today)</button>
+    </div>
+    <button class="btn btn-outline btn-sm" onclick="downloadCsv('/classes/${c.id}/reports/attendance.csv', 'attendance-${c.id}.csv')">⬇ Export CSV</button></div>
+    ${activeQrBanner(cd)}
+    ${sectionFilterHtml(cd)}
+    <div class="tabs" style="margin-bottom:12px;">
+      <button class="tab ${ATT_VIEW === 'sessions' ? 'active' : ''}" onclick="ATT_VIEW='sessions';renderPage()">Sessions</button>
+      <button class="tab ${ATT_VIEW === 'records' ? 'active' : ''}" onclick="ATT_VIEW='records';renderPage()">All Records</button>
+    </div>
+    ${ATT_VIEW === 'sessions' ? sessionsTableHtml(cd) : attendanceTables(cd, c)}`;
+      } else if (ASSESS_TYPE[CLASS_TAB]) {
+        body = assessmentTab(cd, CLASS_TAB);
+      } else if (CLASS_TAB === 'report') { body = reportCardTab(c); }
+
+      return `<button class="btn btn-ghost btn-sm" style="margin-bottom:10px;padding-left:0;" onclick="backToClasses()">← All Classes</button>
+      <div class="row between wrap" style="margin-bottom:6px;"><h2>${esc(c.name)}</h2><span class="pill pill-neutral">Code: ${esc(c.code)}</span></div>
+      <div class="row" style="gap:8px;margin-bottom:10px;align-items:center;flex-wrap:wrap;">${classTags(c)}<button class="btn btn-outline btn-sm" onclick="openEditClassModal()">✎ Edit Subject</button></div>
+      <div class="tabs">
+      <button class="tab ${CLASS_TAB === 'students' ? 'active' : ''}" onclick="setClassTab('students')">Students</button>
+      <button class="tab ${CLASS_TAB === 'attendance' ? 'active' : ''}" onclick="setClassTab('attendance')">Attendance</button>
+      <button class="tab ${CLASS_TAB === 'quizzes' ? 'active' : ''}" onclick="setClassTab('quizzes')">Quizzes</button>
+      <button class="tab ${CLASS_TAB === 'exams' ? 'active' : ''}" onclick="setClassTab('exams')">Exams</button>
+      <button class="tab ${CLASS_TAB === 'activities' ? 'active' : ''}" onclick="setClassTab('activities')">Activities</button>
+      <button class="tab ${CLASS_TAB === 'report' ? 'active' : ''}" onclick="setClassTab('report')">Report Card</button>
+      </div>${body}`;
+    }
+
+    function setClassTab(t) {
+      CLASS_TAB = t; ATT_SESSION_OPEN = null; ATT_SESSION = null; ASSESS_OPEN = null; ASSESS_SUBS = null;
+      renderPage();
+      if (t === 'report') loadReportCard(ST.activeClassId);
+    }
+    async function approveStudent(enrollmentId) {
+      try { await api(`/classes/${ST.activeClassId}/students/${enrollmentId}/approve`, { method: 'POST' }); toast('Student approved.', 'ok'); await loadClassDetail(ST.activeClassId); }
+      catch (err) { apiErrorToast(err); }
+    }
+    async function rejectStudent(enrollmentId) {
+      try { await api(`/classes/${ST.activeClassId}/students/${enrollmentId}/reject`, { method: 'POST' }); toast('Request rejected.', 'ok'); await loadClassDetail(ST.activeClassId); }
+      catch (err) { apiErrorToast(err); }
+    }
+
+    /* ---- Attendance session (QR) ---- */
+    function stageName(n) { return Number(n) === 2 ? 'Time Out' : 'Time In'; }
+
+    function normSession(s) {
+      const stages = ['Time In', 'Time Out'];
+      const n = Number(s.stage) || 1;
+      return { ...s, token: s.token || s.qr_token, stages, stage_index: n - 1, stage: stages[n - 1], active: s.status === 'active' };
+    }
+
+    function openStartAttendanceModal(stage, classSessionId = null) {
+      const label = stage === 2 ? 'Time Out' : 'Time In';
+      const ses = classSessionId && ATT_SESSION ? ATT_SESSION : null;
+      openModal(`<h3 style="margin-bottom:12px;">Start ${label}</h3>
+  <p style="font-size:13.5px;color:var(--ink-700);margin-bottom:14px;line-height:1.6;">
+    ${ses ? `Session: <b>${fmtDate(ses.date)}</b>${ses.title ? ' · ' + esc(ses.title) : ''}.<br>` : `Uses today's session (${fmtDate(todayYmd())}); it is created if it doesn't exist yet.<br>`}
+    The QR code is valid <b>only today</b> and stops working automatically at the end of the day. Recorded attendance is kept.</p>
+  <button class="btn btn-primary" onclick="beginAttendanceSession(${stage}, ${classSessionId ? `'${classSessionId}'` : 'null'})">Begin ${label}</button>`);
+    }
+
+    async function beginAttendanceSession(stage, classSessionId = null) {
+      try {
+        const body = { stage };
+        if (classSessionId) body.class_session_id = Number(classSessionId);
+        const session = await api(`/classes/${ST.activeClassId}/attendance/start`, { method: 'POST', body: JSON.stringify(body) });
+        CACHE.classDetail.session = normSession(session);
+        showQRModal();
+        refreshAttendanceData();
+      } catch (err) { apiErrorToast(err); }
+    }
+
+    function activeQrBanner(cd) {
+      const s = cd.session;
+      if (!s || !s.active) return '';
+      return `<div class="card" style="box-shadow:none;border:1.5px solid var(--gold-500);margin-bottom:14px;padding:12px 16px;">
+    <div class="row between wrap" style="gap:10px;"><div><strong>${esc(s.stage)} QR is open</strong> <span style="font-size:13px;color:var(--ink-400);">· ${fmtDate(s.session_date)} · valid until ${fmtExpiry(s.expires_at)}</span></div>
+    <button class="btn btn-outline btn-sm" onclick="showQRModal()">Show QR</button></div></div>`;
+    }
+    function fmtExpiry(iso) {
+      if (!iso) return 'end of day';
+      return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+    }
+
+    function showQRModal() {
+      const sess = CACHE.classDetail.session;
+      openModal(`<div class="qr-box"><h3>${esc(sess.stage)}</h3><p style="font-size:12.5px;color:var(--ink-400);">Session ${fmtDate(sess.session_date)} · valid until ${fmtExpiry(sess.expires_at)}</p><div id="qrCanvasHolder"></div><div class="timer" id="qrTimer">--</div>
+  <div class="row" style="gap:10px;flex-wrap:wrap;justify-content:center;">
+    <button class="btn btn-danger btn-sm" onclick="stopCurrentQR()">Stop ${esc(sess.stage)}</button>
+    <button class="btn btn-outline btn-sm" onclick="regenerateAttendanceQR()">↻ Regenerate QR</button></div>
+  <p style="font-size:12px;color:var(--ink-400);text-align:center;">Students open Scan QR and point their camera here.</p></div>`);
+      drawSessionQR(); tickTimer();
+    }
+
+    async function stopCurrentQR() {
+      try {
+        await api(`/attendance-sessions/${CACHE.classDetail.session.id}/stop`, { method: 'POST' });
+        toast('QR stopped.', 'ok'); closeModal();
+        await refreshAttendanceData();
+      } catch (err) { apiErrorToast(err); }
+    }
+
+    function drawSessionQR() {
+      const sess = CACHE.classDetail.session; const holder = document.getElementById('qrCanvasHolder'); if (!holder) return;
+      holder.innerHTML = '';
+      new QRCode(holder, { text: JSON.stringify({ t: 'attendance', classId: sess.class_id, stage: sess.stage, token: sess.token }), width: 260, height: 260, colorDark: '#0B3230', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.M });
+    }
+    function tickTimer() {
+      clearInterval(window._qrInterval);
+      window._qrInterval = setInterval(() => {
+        const sess = CACHE.classDetail && CACHE.classDetail.session; const timerEl = document.getElementById('qrTimer');
+        if (!sess || !sess.active || !timerEl) { clearInterval(window._qrInterval); return; }
+        if (!sess.expires_at) { timerEl.textContent = 'Valid today'; return; }
+        const secs = Math.max(0, Math.floor((new Date(sess.expires_at).getTime() - Date.now()) / 1000));
+        const h = Math.floor(secs / 3600), m = Math.floor((secs % 3600) / 60), sec = secs % 60;
+        timerEl.textContent = secs > 0 ? `Expires in ${h ? h + 'h ' : ''}${m}m ${String(sec).padStart(2, '0')}s` : 'Expired';
+        if (secs <= 0) { sess.active = false; clearInterval(window._qrInterval); }
+      }, 1000);
+    }
+    async function nextStage() {
+      try { const sess = await api(`/attendance-sessions/${CACHE.classDetail.session.id}/next`, { method: 'POST' }); CACHE.classDetail.session = sess; showQRModal(); }
+      catch (err) { apiErrorToast(err); }
+    }
+    async function regenerateAttendanceQR() {
+      try {
+        const sess = await api(`/attendance-sessions/${CACHE.classDetail.session.id}/refresh`, { method: 'POST' });
+        CACHE.classDetail.session = normSession(sess);
+        drawSessionQR(); tickTimer();
+        toast('New QR generated. The old one no longer works.', 'ok');
+      } catch (err) { apiErrorToast(err); }
+    }
+    async function endAttendance() {
+      try { await api(`/attendance-sessions/${CACHE.classDetail.session.id}/stop`, { method: 'POST' }); } catch (e) { }
+      closeModal(); toast('Attendance ended.', 'ok'); await refreshAttendanceData();
+    }
+
+    /* ---- Attendance sessions (teacher): dated sessions, editable date, full roster ---- */
+    let ATT_VIEW = 'sessions', ATT_SESSION_OPEN = null, ATT_SESSION = null;
+    let ATT_SECTION = ''; // '' = all sections, '__none__' = students with no section
+
+    function classSections(cd) {
+      const set = new Set();
+      let blank = false;
+      (cd.students || []).filter(e => e.status === 'approved').forEach(e => {
+        const sec = ((e.student && e.student.section) || '').trim();
+        if (sec) set.add(sec); else blank = true;
+      });
+      return { list: [...set].sort((a, b) => a.localeCompare(b, undefined, { numeric: true })), blank };
+    }
+    function matchesSection(section) {
+      if (!ATT_SECTION) return true;
+      const sec = (section || '').trim();
+      return ATT_SECTION === '__none__' ? !sec : sec === ATT_SECTION;
+    }
+    function sectionFilterHtml(cd) {
+      const { list, blank } = classSections(cd);
+      const opt = (v, l) => `<option value="${esc(v)}" ${ATT_SECTION === v ? 'selected' : ''}>${esc(l)}</option>`;
+      return `<div class="row wrap" style="gap:8px;align-items:center;margin-bottom:12px;">
+    <label for="attSection" style="font-size:13px;font-weight:600;color:var(--ink-700);">Section</label>
+    <select id="attSection" onchange="setAttSection(this.value)" style="padding:8px 12px;border:1.5px solid #DDEAE8;border-radius:10px;background:#fff;min-width:170px;">
+      ${opt('', 'All sections')}${list.map(v => opt(v, v)).join('')}${blank ? opt('__none__', 'No section') : ''}
+    </select>
+    ${ATT_SECTION ? `<span class="pill pill-neutral">Showing ${ATT_SECTION === '__none__' ? 'students with no section' : 'section ' + esc(ATT_SECTION)}</span>` : ''}
+  </div>`;
+    }
+    async function setAttSection(v) {
+      ATT_SECTION = v;
+      renderPage();
+      // session list counts are computed by the server for the chosen section
+      try {
+        const sessions = await api(`/classes/${ST.activeClassId}/sessions` + (v ? `?section=${encodeURIComponent(v)}` : ''));
+        if (ATT_SECTION === v && CACHE.classDetail) { CACHE.classDetail.sessions = sessions; renderPage(); }
+      } catch (err) { apiErrorToast(err); }
+    }
+
+    async function refreshAttendanceData() {
+      if (!ST.activeClassId) return;
+      await loadClassDetail(ST.activeClassId);
+      if (ATT_SESSION_OPEN) await loadSessionDetail(ATT_SESSION_OPEN);
+    }
+    function sessionsTableHtml(cd) {
+      const list = cd.sessions || [];
+      if (!list.length) return `<div class="empty"><div class="big">✓</div>No attendance sessions yet. Create one, or start a Time In QR to create today's session.</div>`;
+      return `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Title</th><th>Present</th><th>Late</th><th>Excused</th><th>Absent</th><th></th></tr></thead><tbody>
+    ${list.map(s => `<tr style="cursor:pointer;" onclick="openSession('${s.id}')"><td><strong>${fmtDate(s.date)}</strong>${s.is_today ? ' <span class="pill pill-ok">Today</span>' : ''}</td><td>${esc(s.title || '—')}</td>
+      <td>${s.present_count}</td><td>${s.late_count}</td><td>${s.excused_count}</td><td>${s.absent_count}</td>
+      <td><div class="row" style="gap:8px;flex-wrap:wrap;"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openSession('${s.id}')">Open</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openSessionModal('${s.id}')">✎ Edit Date</button><button class="btn btn-danger btn-sm" style="width:auto;" onclick="event.stopPropagation();confirmDeleteSession('${s.id}')">🗑 Delete</button></div></td></tr>`).join('')}
+    </tbody></table></div>`;
+    }
+    async function openSession(id) {
+      ATT_SESSION_OPEN = id; ATT_SESSION = null; renderPage();
+      await loadSessionDetail(id);
+    }
+    async function loadSessionDetail(id) {
+      try {
+        const data = await api(`/class-sessions/${id}`);
+        if (String(ATT_SESSION_OPEN) === String(id)) ATT_SESSION = data;
+      } catch (err) { apiErrorToast(err); ATT_SESSION_OPEN = null; }
+      renderPage();
+    }
+    function closeSession() { ATT_SESSION_OPEN = null; ATT_SESSION = null; renderPage(); }
+
+    function sessionDetailHtml(c) {
+      const back = `<button class="btn btn-ghost btn-sm" style="margin-bottom:10px;padding-left:0;" onclick="closeSession()">← All Sessions</button>`;
+      const s = ATT_SESSION;
+      if (!s) return back + `<div class="loading">Loading session…</div>`;
+      const roster = s.students.filter(r => matchesSection(r.section));
+      const count = st => roster.filter(r => r.status === st).length;
+      const stat = (n, l) => `<div class="card stat"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
+      return `${back}
+  <div class="row between wrap" style="gap:10px;margin-bottom:6px;"><h3>${fmtDate(s.date)}${s.title ? ' · ' + esc(s.title) : ''}</h3>
+    <div class="row" style="gap:8px;"><button class="btn btn-outline btn-sm" onclick="openSessionModal('${s.id}')">✎ Edit Date</button>
+    <button class="btn btn-danger btn-sm" style="width:auto;" onclick="confirmDeleteSession('${s.id}')">🗑 Delete Session</button></div></div>
+  <div class="row wrap" style="gap:10px;margin:8px 0 14px;">
+    ${s.is_today ? `<button class="btn btn-gold" style="width:auto;" onclick="openStartAttendanceModal(1, '${s.id}')">▣ Start Time In</button>
+    <button class="btn btn-outline" style="width:auto;" onclick="openStartAttendanceModal(2, '${s.id}')">▣ Start Time Out</button>`
+          : `<div class="hint">QR codes can only be started on the session date. You can still set each student's status below.</div>`}
+  </div>
+  ${sectionFilterHtml(CACHE.classDetail)}
+  <div class="grid grid-4" style="margin-bottom:16px;">${stat(count('present'), 'Present')}${stat(count('late'), 'Late')}${stat(count('excused'), 'Excused')}${stat(count('absent'), 'Absent')}</div>
+  <div class="table-wrap"><table><thead><tr><th>Student</th><th>Student ID</th><th>Section</th><th>Time In</th><th>Time Out</th><th>Status</th></tr></thead><tbody>
+  ${roster.length ? roster.map(r => `<tr><td>${esc(r.name)}</td><td>${esc(r.school_id || '—')}</td><td>${esc(r.section || '—')}</td><td>${fmtTime(r.time_in)}</td><td>${fmtTime(r.time_out)}</td>
+    <td><select onchange="setSessionStatus('${r.student_id}', this.value)" style="padding:4px 8px;border-radius:8px;border:1px solid var(--teal-100);background:#fff;font-size:13px;">
+    ${['present', 'late', 'absent', 'excused'].map(v => `<option value="${v}" ${r.status === v ? 'selected' : ''}>${v.charAt(0).toUpperCase() + v.slice(1)}</option>`).join('')}</select></td></tr>`).join('')
+          : `<tr><td colspan="6"><div class="empty">${s.students.length ? 'No students in this section.' : 'No enrolled students yet.'}</div></td></tr>`}
+  </tbody></table></div>`;
+    }
+    async function setSessionStatus(studentId, status) {
+      try {
+        await api(`/class-sessions/${ATT_SESSION_OPEN}/students/${studentId}/status`, { method: 'POST', body: JSON.stringify({ status }) });
+        toast('Status updated.', 'ok');
+        await refreshAttendanceData();
+      } catch (err) { apiErrorToast(err); refreshAttendanceData(); }
+    }
+    function openSessionModal(id = null) {
+      const cd = CACHE.classDetail;
+      const s = id ? ((ATT_SESSION && String(ATT_SESSION.id) === String(id)) ? ATT_SESSION : (cd.sessions || []).find(x => String(x.id) === String(id))) : null;
+      openModal(`<h3 style="margin-bottom:14px;">${s ? 'Edit Session' : 'New Attendance Session'}</h3>
+  <form onsubmit="return saveSession(event, ${s ? `'${s.id}'` : 'null'})">
+    <div class="field"><label>Session Date</label><input id="sesDate" type="date" required value="${s ? esc(s.date) : todayYmd()}"></div>
+    <div class="field"><label>Title (optional)</label><input id="sesTitle" value="${s ? esc(s.title || '') : ''}" placeholder="e.g. Lecture 5"></div>
+    ${s ? '<div class="hint" style="margin-bottom:12px;">QR codes of this session are valid only on the session date, so changing the date also changes when its QR works.</div>' : ''}
+    <button class="btn btn-primary" type="submit">${s ? 'Save Changes' : 'Create Session'}</button></form>`);
+    }
+    function confirmDeleteSession(id) {
+      const cd = CACHE.classDetail;
+      const s = (ATT_SESSION && String(ATT_SESSION.id) === String(id)) ? ATT_SESSION : (cd.sessions || []).find(x => String(x.id) === String(id));
+      if (!s) return;
+      const live = cd.session && cd.session.active && String(cd.session.class_session_id) === String(id);
+      openModal(`<h3 style="margin-bottom:10px;">Delete this session?</h3>
+  <p style="font-size:14px;line-height:1.6;margin-bottom:6px;"><b>${fmtDate(s.date)}</b>${s.title ? ' · ' + esc(s.title) : ''}</p>
+  <p style="font-size:13.5px;color:var(--ink-700);line-height:1.6;margin-bottom:16px;">This permanently deletes the session and <b>all attendance recorded in it</b> (Time In, Time Out and statuses you set). ${live ? 'Its open QR code will stop working. ' : ''}The students' attendance counts on the Report Card will no longer include it. This cannot be undone.</p>
+  <div class="row" style="gap:10px;"><button class="btn btn-outline" style="width:auto;" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-danger" style="width:auto;" id="delSessionBtn" onclick="deleteSession('${s.id}')">Delete Session</button></div>`);
+    }
+    async function deleteSession(id) {
+      const btn = document.getElementById('delSessionBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Deleting…'; }
+      try {
+        const res = await api(`/class-sessions/${id}`, { method: 'DELETE' });
+        closeModal();
+        toast(res.deleted_records ? `Session deleted with ${res.deleted_records} attendance record(s).` : 'Session deleted.', 'ok');
+        if (String(ATT_SESSION_OPEN) === String(id)) { ATT_SESSION_OPEN = null; ATT_SESSION = null; }
+        if (REPORT.classId) REPORT.data = null;
+        await refreshAttendanceData();
+      } catch (err) { apiErrorToast(err); if (btn) { btn.disabled = false; btn.textContent = 'Delete Session'; } }
+    }
+    async function saveSession(e, id) {
+      e.preventDefault();
+      const body = { session_date: document.getElementById('sesDate').value, title: document.getElementById('sesTitle').value.trim() };
+      try {
+        const res = id
+          ? await api(`/class-sessions/${id}`, { method: 'PUT', body: JSON.stringify(body) })
+          : await api(`/classes/${ST.activeClassId}/sessions`, { method: 'POST', body: JSON.stringify(body) });
+        closeModal(); toast(id ? 'Session updated.' : 'Session created.', 'ok');
+        ATT_SESSION_OPEN = res.id; ATT_SESSION = res;
+        await refreshAttendanceData();
+      } catch (err) { apiErrorToast(err); }
+      return false;
+    }
+
+    /* ---- Attendance status (teacher can edit) ---- */
+    function statusSelect(r) {
+      const cur = r.status || 'present';
+      return `<select onchange="updateAttendanceStatus('${r.id}', this.value)" style="padding:4px 8px;border-radius:8px;border:1px solid var(--teal-100);background:#fff;font-size:13px;">
+    ${['present', 'late', 'absent', 'excused'].map(s => `<option value="${s}" ${cur === s ? 'selected' : ''}>${s.charAt(0).toUpperCase() + s.slice(1)}</option>`).join('')}</select>`;
+    }
+    async function updateAttendanceStatus(id, status) {
+      try {
+        await api(`/attendance-records/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) });
+        const rec = CACHE.classDetail.records.find(r => String(r.id) === String(id));
+        if (rec) rec.status = status;
+        toast('Status updated.', 'ok');
+      } catch (err) { apiErrorToast(err); loadClassDetail(ST.activeClassId); }
+    }
+
+    /* ---- Subject year / section ---- */
+    function classTags(c) {
+      const tags = [];
+      if (c.year_level) tags.push(`<span class="pill pill-neutral">${esc(c.year_level)}</span>`);
+      if (c.section) tags.push(`<span class="pill pill-neutral">Section ${esc(c.section)}</span>`);
+      return tags.length ? `<div class="row" style="gap:6px;margin:4px 0;flex-wrap:wrap;">${tags.join('')}</div>` : '';
+    }
+    function openEditClassModal() {
+      const c = classById(ST.activeClassId);
+      openModal(`<h3 style="margin-bottom:14px;">Edit Subject</h3>
+  <div class="field"><label>Subject Name</label><input id="editClsName" value="${esc(c.name)}"></div>
+  <div class="field"><label>Year</label><input id="editClsYear" value="${esc(c.year_level || '')}" placeholder="e.g. 3rd Year"></div>
+  <div class="field"><label>Section</label><input id="editClsSection" value="${esc(c.section || '')}" placeholder="e.g. A"></div>
+  <button class="btn btn-primary" onclick="saveClassInfo()">Save Changes</button>`);
+    }
+    async function saveClassInfo() {
+      const name = document.getElementById('editClsName').value.trim();
+      if (!name) { toast('Subject name is required.', 'err'); return; }
+      try {
+        await api(`/classes/${ST.activeClassId}`, {
+          method: 'PUT', body: JSON.stringify({
+            name, year_level: document.getElementById('editClsYear').value.trim(), section: document.getElementById('editClsSection').value.trim()
+          })
+        });
+        CACHE.classes = await api('/classes');
+        closeModal(); toast('Subject updated.', 'ok'); renderPage();
+      } catch (err) { apiErrorToast(err); }
+    }
+
+    /* ---- CSV download (sends the login token in a header) ---- */
+    async function downloadCsv(path, filename) {
+      try {
+        const res = await fetch(API_BASE + path, { headers: { 'Authorization': 'Bearer ' + TOKEN, 'Accept': 'text/csv' } });
+        if (!res.ok) {
+          let msg = 'Could not export CSV.';
+          try { msg = (await res.json()).message || msg; } catch (e) { }
+          toast(msg, 'err'); return;
+        }
+        const url = URL.createObjectURL(await res.blob());
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      } catch (err) { toast('Could not export CSV.', 'err'); }
+    }
+
+    /* ---- Student: subject page (Attendance / Quizzes / Exams / Activities) ---- */
+    let STU_TAB = 'attendance';
+
+    async function openStudentClass(id) {
+      ST.activeClassId = id; STU_TAB = 'attendance'; CACHE.stuSessions = null;
+      renderPage();
+      try {
+        const [att, ass, sessions] = await Promise.all([api('/my-attendance'), api('/my-assessments'), api(`/classes/${id}/sessions`)]);
+        CACHE.myAttendance = att; CACHE.myAssessments = ass; CACHE.stuSessions = sessions;
+      } catch (err) { apiErrorToast(err); }
+      renderPage();
+    }
+    function setStuTab(t) {
+      STU_TAB = t; renderPage();
+      if (t === 'report') loadReportCard(ST.activeClassId);
+    }
+    function backToSubjects() { ST.activeClassId = null; renderPage(); }
+
+    function stuStatusPill(status) {
+      const s = status || 'present';
+      const cls = s === 'present' ? 'pill-ok' : s === 'late' ? 'pill-warn' : 'pill-neutral';
+      return `<span class="pill ${cls}">${esc(s.charAt(0).toUpperCase() + s.slice(1))}</span>`;
+    }
+
+    function studentClassDetail() {
+      const c = classById(ST.activeClassId);
+      if (!c) return `<div class="loading">Loading…</div>`;
+      const att = (CACHE.myAttendance || []).filter(r => String(r.class_id) === String(c.id));
+      const items = (CACHE.myAssessments || []).filter(a => String(a.class_id) === String(c.id));
+      const stat = (n, label) => `<div class="card stat"><div class="num">${n}</div><div class="lbl">${label}</div></div>`;
+      let body = '';
+
+      if (STU_TAB === 'attendance') {
+        const sessions = CACHE.stuSessions;
+        if (!sessions) {
+          body = `<div class="loading">Loading attendance…</div>`;
+        } else {
+          const count = s => sessions.filter(r => r.status === s).length;
+          body = `<div class="grid grid-4" style="margin-bottom:16px;">${stat(count('present'), 'Present')}${stat(count('late'), 'Late')}${stat(count('absent'), 'Absent')}${stat(count('excused'), 'Excused')}</div>
+    <div class="table-wrap"><table><thead><tr><th>Session Date</th><th>Title</th><th>Time In</th><th>Time Out</th><th>Status</th></tr></thead><tbody>
+    ${sessions.length ? sessions.map(r => `<tr><td>${fmtDate(r.date)}</td><td>${esc(r.title || '—')}</td><td>${fmtTime(r.time_in)}</td><td>${fmtTime(r.time_out)}</td><td>${stuStatusPill(r.status)}</td></tr>`).join('')
+              : `<tr><td colspan="5"><div class="empty">No attendance sessions yet.</div></td></tr>`}
+    </tbody></table></div>`;
+        }
+      } else if (ASSESS_TYPE[STU_TAB]) {
+        const type = ASSESS_TYPE[STU_TAB];
+        const rows = items.filter(a => (a.type || 'quiz') === type);
+        const released = rows.filter(a => a.score_released && a.score != null);
+        const pcts = released.filter(a => a.total_points).map(a => (a.score / a.total_points) * 100);
+        const avg = pcts.length ? Math.round(pcts.reduce((x, y) => x + y, 0) / pcts.length) + '%' : '—';
+        body = `<div class="grid grid-4" style="margin-bottom:16px;">${stat(rows.length, 'Total')}${stat(rows.filter(a => a.submitted).length, 'Submitted')}${stat(released.length, 'Released')}${stat(avg, 'Average')}</div>
+    <div class="table-wrap"><table><thead><tr><th>Title</th><th>Posted</th><th>Ends</th><th>Status</th><th>My Photo</th><th>My Score</th></tr></thead><tbody>
+    ${rows.length ? rows.map(a => {
+          const sub = a.my_submission;
+          const photo = (sub
+            ? `${authImg(sub.image_url, a.title + ' — my submission')} <span class="pill ${a.is_verified ? 'pill-ok' : 'pill-warn'}" style="margin-left:6px;">${a.is_verified ? 'Checked' : 'Awaiting check'}</span>`
+            : '<span class="pill pill-neutral">Not submitted</span>') + (canSubmitPhoto(a) ? `<div style="margin-top:6px;">${submitPhotoButton(a)}</div>` : '');
+          return `<tr><td>${esc(a.title)}</td><td>${fmtDateTime(a.created_at)}</td><td>${a.closes_at ? fmtDateTime(a.closes_at) : 'No limit'}</td><td>${assessmentStatus(a)}</td><td>${photo}</td><td>${studentScoreHtml(a)}</td></tr>`;
+        }).join('') : `<tr><td colspan="6"><div class="empty">No ${ASSESS_PLURAL[type]} yet.</div></td></tr>`}
+    </tbody></table></div>
+    <div class="hint" style="margin-top:10px;">Tap <b>Submit Photo</b> on an open ${ASSESS_LABEL[type].toLowerCase()} to take a picture of your paper.</div>`;
+      } else if (STU_TAB === 'report') {
+        body = reportCardTab(c);
+      }
+
+      return `<button class="btn btn-ghost btn-sm" style="margin-bottom:10px;padding-left:0;" onclick="backToSubjects()">← All Subjects</button>
+  <div class="row between wrap" style="margin-bottom:6px;"><h2>${esc(c.name)}</h2><span class="pill pill-neutral">Code: ${esc(c.code)}</span></div>
+  ${classTags(c)}
+  <div class="tabs" style="margin-top:10px;">
+    <button class="tab ${STU_TAB === 'attendance' ? 'active' : ''}" onclick="setStuTab('attendance')">Attendance</button>
+    <button class="tab ${STU_TAB === 'quizzes' ? 'active' : ''}" onclick="setStuTab('quizzes')">Quizzes</button>
+    <button class="tab ${STU_TAB === 'exams' ? 'active' : ''}" onclick="setStuTab('exams')">Exams</button>
+    <button class="tab ${STU_TAB === 'activities' ? 'active' : ''}" onclick="setStuTab('activities')">Activities</button>
+    <button class="tab ${STU_TAB === 'report' ? 'active' : ''}" onclick="setStuTab('report')">Report Card</button>
+  </div>${body}`;
+    }
+
+
+    /* ---- Enrolled students: section column + search/filter ---- */
+    let STU_FILTER = { cls: null, q: '', date: '' };
+
+    function enrolledRowsHtml(list) {
+      const q = STU_FILTER.q.trim().toLowerCase();
+      const rows = list.filter(s => {
+        const st = s.student || {};
+        const textOk = !q
+          || (st.name || '').toLowerCase().includes(q)
+          || (st.school_id || '').toLowerCase().includes(q)
+          || (st.section || '').toLowerCase().includes(q);
+        const dateOk = !STU_FILTER.date || (s.created_at && toLocalInput(s.created_at).slice(0, 10) === STU_FILTER.date);
+        return textOk && dateOk;
+      });
+      if (!rows.length) {
+        return `<tr><td colspan="6"><div class="empty">${list.length ? 'No students match your search.' : 'No students enrolled yet.'}</div></td></tr>`;
+      }
+      return rows.map(s => `<tr><td>${esc(s.student.name)}</td><td>${esc(s.student.school_id || '—')}</td><td>${esc((s.student.course || '') + ' ' + (s.student.year_level || '')) || '—'}</td><td>${esc(s.student.section || '—')}</td><td>${s.created_at ? new Date(s.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</td>
+      <td><button class="btn btn-danger btn-sm" style="width:auto;" onclick="confirmRemoveStudent('${s.id}')">Remove</button></td></tr>`).join('');
+    }
+
+    function enrolledSection(approved, c) {
+      if (STU_FILTER.cls !== c.id) STU_FILTER = { cls: c.id, q: '', date: '' };
+      return `<div class="row between wrap" style="gap:10px;margin-bottom:10px;">
+    <h3 style="font-size:14px;">Enrolled Students (<span id="stuCount">${approved.length}</span>)</h3>
+    <div class="row wrap" style="gap:8px;">
+      <input id="stuSearch" type="search" placeholder="Search name or student number" value="${esc(STU_FILTER.q)}" oninput="filterStudents()" style="padding:8px 12px;border:1.5px solid #DDEAE8;border-radius:10px;min-width:230px;">
+      <input id="stuDate" type="date" value="${esc(STU_FILTER.date)}" oninput="filterStudents()" title="Date joined" style="padding:8px 12px;border:1.5px solid #DDEAE8;border-radius:10px;">
+      <button class="btn btn-outline btn-sm" onclick="clearStudentFilter()">Clear</button>
+    </div></div>
+  <div class="table-wrap"><table><thead><tr><th>Name</th><th>Student ID</th><th>Course/Year</th><th>Section</th><th>Date Joined</th><th></th></tr></thead>
+  <tbody id="enrolledRows">${enrolledRowsHtml(approved)}</tbody></table></div>`;
+    }
+
+    function confirmRemoveStudent(enrollmentId) {
+      const e = CACHE.classDetail.students.find(x => String(x.id) === String(enrollmentId));
+      const c = classById(ST.activeClassId);
+      if (!e) return;
+      openModal(`<h3 style="margin-bottom:10px;">Remove this student?</h3>
+  <p style="font-size:14px;margin-bottom:6px;"><b>${esc(e.student.name)}</b> · ${esc(e.student.school_id || '')}</p>
+  <p style="font-size:13.5px;color:var(--ink-700);line-height:1.6;margin-bottom:16px;">They will be removed from <b>${esc(c ? c.name : 'this class')}</b> and lose access to it. They'll no longer appear in attendance, the Report Card or exports. Their past attendance, scores and photos are kept — if they rejoin with the class code and you approve them, their records come back.</p>
+  <div class="row" style="gap:10px;"><button class="btn btn-outline" style="width:auto;" onclick="closeModal()">Cancel</button>
+  <button class="btn btn-danger" style="width:auto;" id="removeStuBtn" onclick="removeStudent('${e.id}')">Remove Student</button></div>`);
+    }
+    async function removeStudent(enrollmentId) {
+      const btn = document.getElementById('removeStuBtn'); if (btn) { btn.disabled = true; btn.textContent = 'Removing…'; }
+      try {
+        const res = await api(`/classes/${ST.activeClassId}/students/${enrollmentId}`, { method: 'DELETE' });
+        closeModal(); toast(res.message || 'Student removed.', 'ok');
+        if (REPORT.classId) REPORT.data = null;
+        CACHE.classes = await api('/classes');
+        await loadClassDetail(ST.activeClassId);
+      } catch (err) { apiErrorToast(err); if (btn) { btn.disabled = false; btn.textContent = 'Remove Student'; } }
+    }
+    function filterStudents() {
+      STU_FILTER.q = document.getElementById('stuSearch').value;
+      STU_FILTER.date = document.getElementById('stuDate').value;
+      const approved = CACHE.classDetail.students.filter(s => s.status === 'approved');
+      document.getElementById('enrolledRows').innerHTML = enrolledRowsHtml(approved);
+    }
+    function clearStudentFilter() {
+      STU_FILTER.q = ''; STU_FILTER.date = '';
+      document.getElementById('stuSearch').value = '';
+      document.getElementById('stuDate').value = '';
+      filterStudents();
+    }
+
+
+    /* ---- Attendance: Time In / Time Out side by side + filters ---- */
+    let ATT_FILTER = { cls: null, q: '', status: 'all', date: '' };
+    const ATT_STATUSES = [['all', 'All'], ['present', 'Present'], ['late', 'Late'], ['absent', 'Absent'], ['excused', 'Excused']];
+
+    const byName = (a, b) => String(a || '').localeCompare(String(b || ''), undefined, { sensitivity: 'base' });
+    function attFiltered(records, stage) {
+      const q = ATT_FILTER.q.trim().toLowerCase();
+      const recName = r => (r.student && r.student.name) || r.student;
+      return records.filter(r => {
+        if (Number(r.stage) !== stage) return false;
+        if (!matchesSection(r.section)) return false;
+        const name = String((r.student && r.student.name) || r.student || '').toLowerCase();
+        if (q && !name.includes(q)) return false;
+        if (ATT_FILTER.status !== 'all' && (r.status || 'present') !== ATT_FILTER.status) return false;
+        if (ATT_FILTER.date && toLocalInput(r.recorded_at || r.scanned_at).slice(0, 10) !== ATT_FILTER.date) return false;
+        return true;
+      }).sort((a, b) => byName(recName(a), recName(b)) || new Date(b.scanned_at) - new Date(a.scanned_at)); // A-Z, newest first per student
+    }
+    function attRowsHtml(rows, label) {
+      if (!rows.length) return `<tr><td colspan="3"><div class="empty">No ${label} records found.</div></td></tr>`;
+      return rows.map(r => `<tr><td>${esc((r.student && r.student.name) || r.student)}${r.section ? `<div style="font-size:12px;color:var(--ink-400);">${esc(r.section)}</div>` : ''}</td><td>${new Date(r.recorded_at || r.scanned_at).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td><td>${statusSelect(r)}</td></tr>`).join('');
+    }
+    function attChipsHtml() {
+      return ATT_STATUSES.map(([v, l]) => `<button class="btn ${ATT_FILTER.status === v ? 'btn-primary' : 'btn-outline'} btn-sm" style="width:auto;" onclick="setAttStatus('${v}')">${l}</button>`).join('');
+    }
+    function attendanceTables(cd, c) {
+      if (ATT_FILTER.cls !== c.id) ATT_FILTER = { cls: c.id, q: '', status: 'all', date: '' };
+      const card = (title, stage, tbodyId, countId) => {
+        const rows = attFiltered(cd.records, stage);
+        return `<div class="card" style="min-width:0;"><div class="section-title"><h3>${title} (<span id="${countId}">${rows.length}</span>)</h3></div>
+      <div class="table-wrap"><table><thead><tr><th>Student</th><th>Recorded</th><th>Status</th></tr></thead>
+      <tbody id="${tbodyId}">${attRowsHtml(rows, title)}</tbody></table></div></div>`;
+      };
+      return `<div class="row wrap" style="gap:8px;margin-bottom:14px;align-items:center;">
+    <input id="attSearch" type="search" placeholder="Search student name" value="${esc(ATT_FILTER.q)}" oninput="filterAttendance()" style="padding:8px 12px;border:1.5px solid #DDEAE8;border-radius:10px;min-width:210px;">
+    <input id="attDate" type="date" value="${esc(ATT_FILTER.date)}" oninput="filterAttendance()" title="Date" style="padding:8px 12px;border:1.5px solid #DDEAE8;border-radius:10px;">
+    <div class="row wrap" id="attChips" style="gap:6px;">${attChipsHtml()}</div>
+    <button class="btn btn-ghost btn-sm" onclick="clearAttFilter()">Clear</button>
+  </div>
+  <div class="grid grid-2" style="gap:16px;align-items:start;">${card('Time In', 1, 'attRowsIn', 'attCountIn')}${card('Time Out', 2, 'attRowsOut', 'attCountOut')}</div>`;
+    }
+    function filterAttendance() {
+      const cd = CACHE.classDetail;
+      const q = document.getElementById('attSearch'), d = document.getElementById('attDate');
+      if (q) ATT_FILTER.q = q.value;
+      if (d) ATT_FILTER.date = d.value;
+      const inRows = attFiltered(cd.records, 1), outRows = attFiltered(cd.records, 2);
+      document.getElementById('attRowsIn').innerHTML = attRowsHtml(inRows, 'Time In');
+      document.getElementById('attRowsOut').innerHTML = attRowsHtml(outRows, 'Time Out');
+      document.getElementById('attCountIn').textContent = inRows.length;
+      document.getElementById('attCountOut').textContent = outRows.length;
+      document.getElementById('attChips').innerHTML = attChipsHtml();
+    }
+    function setAttStatus(v) { ATT_FILTER.status = v; filterAttendance(); }
+    function clearAttFilter() {
+      ATT_FILTER.q = ''; ATT_FILTER.date = ''; ATT_FILTER.status = 'all';
+      document.getElementById('attSearch').value = '';
+      document.getElementById('attDate').value = '';
+      filterAttendance();
+    }
+
+    /* ---- Quizzes / Exams / Activities: filters + clickable detail page ---- */
+    let ASSESS_OPEN = null, ASSESS_SUBS = null;
+    let ASSESS_FILTER = { key: '', q: '', status: 'all', date: '' };
+    let DETAIL_FILTER = { id: null, q: '', status: 'all' };
+    const ASSESS_STATUSES = [['all', 'All'], ['open', 'Open'], ['scheduled', 'Scheduled'], ['closed', 'Closed']];
+    const DETAIL_CHIPS = [['everyone', 'All students'], ['submitted', 'Submitted'], ['pending', 'Awaiting check'], ['verified', 'Verified'], ['none', 'Not submitted']];
+    function assessmentStatusKey(a) {
+      const now = Date.now();
+      if (a.opens_at && new Date(a.opens_at).getTime() > now) return 'scheduled';
+      if (a.closes_at && new Date(a.closes_at).getTime() < now) return 'closed';
+      return 'open';
+    }
+    function assessFiltered(cd, type) {
+      const q = ASSESS_FILTER.q.trim().toLowerCase();
+      return cd.assessments.filter(a => {
+        if ((a.type || 'quiz') !== type) return false;
+        if (q && !(a.title || '').toLowerCase().includes(q)) return false;
+        if (ASSESS_FILTER.status !== 'all' && assessmentStatusKey(a) !== ASSESS_FILTER.status) return false;
+        if (ASSESS_FILTER.date && (!a.created_at || toLocalInput(a.created_at).slice(0, 10) !== ASSESS_FILTER.date)) return false;
+        return true;
+      });
+    }
+    function assessRowsHtml(rows, type) {
+      if (!rows.length) return `<tr><td colspan="6"><div class="empty">No ${ASSESS_PLURAL[type]} found.</div></td></tr>`;
+      return rows.map(a => `<tr style="cursor:pointer;" onclick="openAssessment('${a.id}')"><td><strong>${esc(a.title)}</strong><div style="font-size:12px;color:var(--ink-400);">${a.total_points} points</div></td><td>${fmtDateTime(a.created_at)}</td><td>${a.closes_at ? fmtDateTime(a.closes_at) : 'No limit'}</td><td>${assessmentStatus(a)}</td><td>${a.submissions_count || 0}</td>
+    <td><div class="row" style="gap:8px;flex-wrap:wrap;"><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();viewSubmissions('${a.id}')">Review</button><button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openEditAssessment('${a.id}')">✎ Edit</button></div></td></tr>`).join('');
+    }
+    function assessChipsHtml() {
+      return ASSESS_STATUSES.map(([v, l]) => `<button class="btn ${ASSESS_FILTER.status === v ? 'btn-primary' : 'btn-outline'} btn-sm" style="width:auto;" onclick="setAssessStatus('${v}')">${l}</button>`).join('');
+    }
+
+    function assessmentTab(cd, tab) {
+      const type = ASSESS_TYPE[tab], label = ASSESS_LABEL[type];
+      const open = ASSESS_OPEN && cd.assessments.find(a => String(a.id) === String(ASSESS_OPEN) && (a.type || 'quiz') === type);
+      if (open) return assessmentDetail(cd, open, tab);
+
+      const key = cd.id + ':' + tab;
+      if (ASSESS_FILTER.key !== key) ASSESS_FILTER = { key, q: '', status: 'all', date: '' };
+      const rows = assessFiltered(cd, type);
+      return `<div class="row between wrap" style="margin-bottom:14px;gap:10px;">
+    <button class="btn btn-gold" style="width:auto;" onclick="openCreateAssessment('${type}')">+ Create ${label}</button>
+    <span style="font-size:13px;color:var(--ink-400);">Showing <span id="assessCount">${rows.length}</span> of ${cd.assessments.filter(a => (a.type || 'quiz') === type).length}</span></div>
+  <div class="row wrap" style="gap:8px;margin-bottom:14px;align-items:center;">
+    <input id="asSearch" type="search" placeholder="Search by title" value="${esc(ASSESS_FILTER.q)}" oninput="filterAssess()" style="padding:8px 12px;border:1.5px solid #DDEAE8;border-radius:10px;min-width:200px;">
+    <input id="asDate" type="date" value="${esc(ASSESS_FILTER.date)}" oninput="filterAssess()" title="Date posted" style="padding:8px 12px;border:1.5px solid #DDEAE8;border-radius:10px;">
+    <div class="row wrap" id="assessChips" style="gap:6px;">${assessChipsHtml()}</div>
+    <button class="btn btn-ghost btn-sm" onclick="clearAssessFilter()">Clear</button>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Title</th><th>Posted</th><th>Ends</th><th>Status</th><th>Submitted</th><th>Actions</th></tr></thead>
+  <tbody id="assessRows">${assessRowsHtml(rows, type)}</tbody></table></div>`;
+    }
+
+    function filterAssess() {
+      const cd = CACHE.classDetail, type = ASSESS_TYPE[CLASS_TAB];
+      const q = document.getElementById('asSearch'), d = document.getElementById('asDate');
+      if (q) ASSESS_FILTER.q = q.value;
+      if (d) ASSESS_FILTER.date = d.value;
+      const rows = assessFiltered(cd, type);
+      document.getElementById('assessRows').innerHTML = assessRowsHtml(rows, type);
+      document.getElementById('assessChips').innerHTML = assessChipsHtml();
+      document.getElementById('assessCount').textContent = rows.length;
+    }
+    function setAssessStatus(v) { ASSESS_FILTER.status = v; filterAssess(); }
+    function clearAssessFilter() {
+      ASSESS_FILTER.q = ''; ASSESS_FILTER.date = ''; ASSESS_FILTER.status = 'all';
+      document.getElementById('asSearch').value = '';
+      document.getElementById('asDate').value = '';
+      filterAssess();
+    }
+
+    async function openAssessment(id) {
+      ASSESS_OPEN = id; ASSESS_SUBS = null;
+      DETAIL_FILTER = { id, q: '', status: 'everyone' };
+      renderPage();
+      try {
+        const subs = await api(`/assessments/${id}/submissions`);
+        if (String(ASSESS_OPEN) !== String(id)) return;
+        ASSESS_SUBS = subs;
+      } catch (err) { apiErrorToast(err); if (String(ASSESS_OPEN) === String(id)) ASSESS_SUBS = []; }
+      renderPage();
+    }
+    function closeAssessment() { ASSESS_OPEN = null; ASSESS_SUBS = null; renderPage(); }
+
+    /* --- detail page: who scanned / who submitted --- */
+    function detailStatusKey(s) {
+      if (!s) return 'none';
+      if (!s.has_image && !s.image_url) return s.is_verified ? 'scored' : 'none';
+      return s.is_verified ? 'verified' : 'pending';
+    }
+    function detailMatch(key, f) {
+      if (f === 'everyone') return true;
+      if (f === 'none') return key === 'none' || key === 'scored';
+      if (f === 'submitted') return key === 'pending' || key === 'verified';
+      return key === f;
+    }
+    function detailData(cd) {
+      const byStudent = {};
+      (ASSESS_SUBS || []).forEach(s => { byStudent[String(s.student_id)] = s; });
+      return { byStudent, roster: cd.students.filter(s => s.status === 'approved') };
+    }
+    function detailRowsHtml(a, roster, byStudent) {
+      const q = DETAIL_FILTER.q.trim().toLowerCase();
+      const list = roster.filter(en => {
+        const s = byStudent[String(en.student.id)];
+        const hit = !q || (en.student.name || '').toLowerCase().includes(q) || (en.student.school_id || '').toLowerCase().includes(q);
+        return hit && detailMatch(detailStatusKey(s), DETAIL_FILTER.status);
+      });
+      if (ASSESS_SUBS === null) return '<tr><td colspan="7"><div class="loading">Loading…</div></td></tr>';
+      if (!list.length) return `<tr><td colspan="7"><div class="empty">${DETAIL_FILTER.status === 'everyone' && !q ? 'No students enrolled yet.' : 'No students match.'}</div></td></tr>`; return list.map(en => {
+        const s = byStudent[String(en.student.id)];
+        const key = detailStatusKey(s);
+        const img = s && s.image_url;
+        const submitted = img ? fmtDateTime(s.submitted_at) : '—';
+        const photo = img ? authImg(img, `${en.student.name} — ${a.title}`) : '—';
+        const status = key === 'none' ? '<span class="pill pill-neutral">Not submitted</span>'
+            : key === 'scored' ? '<span class="pill pill-ok">Scored · no photo</span>'
+              : key === 'pending' ? '<span class="pill pill-warn">Awaiting check</span>' : '<span class="pill pill-ok">Verified</span>';
+        const sid = en.student.id;
+        const score = `<div class="row" style="gap:6px;flex-wrap:nowrap;"><input class="score-input" id="sc_${sid}" value="${s ? s.score ?? 0 : 0}" placeholder="0/${a.total_points}" title="Type a score such as 20 or 20/${a.total_points}" onkeydown="if(event.key==='Enter')saveStudentScore('${a.id}','${sid}')"><span style="font-size:12px;color:var(--ink-400);">/ ${a.total_points}</span><button class="btn btn-primary btn-sm" style="width:auto;" onclick="saveStudentScore('${a.id}','${sid}')">Save</button></div>`;
+        return `<tr><td>${esc(en.student.name)}</td><td>${esc(en.student.school_id || '—')}</td><td>${submitted}</td><td>${photo}</td><td>${status}</td><td>${score}</td></tr>`;
+      }).join('');
+    }
+    function detailChipsHtml() {
+      return DETAIL_CHIPS.map(([v, l]) => `<button class="btn ${DETAIL_FILTER.status === v ? 'btn-primary' : 'btn-outline'} btn-sm" style="width:auto;" onclick="setDetailStatus('${v}')">${l}</button>`).join('');
+    }
+    function filterDetail() {
+      const cd = CACHE.classDetail;
+      const a = cd.assessments.find(x => String(x.id) === String(ASSESS_OPEN));
+      const q = document.getElementById('dtSearch');
+      if (q) DETAIL_FILTER.q = q.value;
+      const { roster, byStudent } = detailData(cd);
+      document.getElementById('detailRows').innerHTML = detailRowsHtml(a, roster, byStudent);
+      document.getElementById('detailChips').innerHTML = detailChipsHtml();
+    }
+    function setDetailStatus(v) { DETAIL_FILTER.status = v; filterDetail(); }
+
+    function assessmentDetail(cd, a, tab) {
+      const type = a.type || 'quiz', label = ASSESS_LABEL[type];
+      const subs = ASSESS_SUBS || [];
+      const { roster, byStudent } = detailData(cd);
+      const submittedList = subs.filter(s => s.answer || s.image_url);
+      const graded = subs.filter(s => s.is_verified && s.score != null);
+      let avg = '—';
+      if (graded.length) {
+        avg = a.total_points
+          ? Math.round(graded.reduce((t, s) => t + (s.score / a.total_points) * 100, 0) / graded.length) + '%'
+          : (graded.reduce((t, s) => t + Number(s.score), 0) / graded.length).toFixed(1);
+      }
+      const stat = (n, l) => `<div class="card stat"><div class="num">${n}</div><div class="lbl">${l}</div></div>`;
+      const back = tab.charAt(0).toUpperCase() + tab.slice(1);
+
+      return `<button class="btn btn-ghost btn-sm" style="margin-bottom:10px;padding-left:0;" onclick="closeAssessment()">← Back to ${back}</button>
+  <div class="row between wrap" style="margin-bottom:6px;gap:10px;"><h2>${esc(a.title)}</h2>${assessmentStatus(a)}</div>
+  <div style="font-size:13.5px;color:var(--ink-400);margin-bottom:12px;line-height:1.7;">${label} · Posted ${fmtDateTime(a.created_at)}${a.opens_at ? ' · Opens ' + fmtDateTime(a.opens_at) : ''} · Ends ${a.closes_at ? fmtDateTime(a.closes_at) : 'No limit'}${a.total_points ? ' · ' + a.total_points + ' points' : ''}</div>
+  <div class="row" style="gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+    <button class="btn btn-outline btn-sm" onclick="openEditAssessment('${a.id}')">✎ Edit</button>
+    ${releaseButton(a)}</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px;">${stat(roster.length, 'Enrolled')}${stat(submittedList.length, 'Submitted')}${stat(graded.length, 'Graded')}${stat(avg, 'Average')}</div>
+  <div class="row wrap" style="gap:8px;margin-bottom:14px;align-items:center;">
+    <input id="dtSearch" type="search" placeholder="Search student name or ID" value="${esc(DETAIL_FILTER.q)}" oninput="filterDetail()" style="padding:8px 12px;border:1.5px solid #DDEAE8;border-radius:10px;min-width:210px;">
+    <div class="row wrap" id="detailChips" style="gap:6px;">${detailChipsHtml()}</div>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>Student</th><th>Student ID</th><th>Submitted</th><th>Photo</th><th>Status</th><th>Score</th></tr></thead>
+  <tbody id="detailRows">${detailRowsHtml(a, roster, byStudent)}</tbody></table></div>
+  <div class="hint" style="margin-top:10px;">Scores start at 0. Type a score like <b>20</b> or <b>20/${a.total_points}</b> and press Save; the subject's Report Card updates automatically. ${a.scores_released ? 'Students can see their released scores.' : 'Students will see "Score not yet released" until you release the scores.'}</div>`;
+    }
+
+    async function saveStudentScore(assessmentId, studentId) {
+      const el = document.getElementById('sc_' + studentId);
+      const v = el ? el.value.trim() : '';
+      if (v === '') { toast('Enter a score (use 0 for none).', 'err'); return; }
+      try {
+        await api(`/assessments/${assessmentId}/scores/${studentId}`, { method: 'PUT', body: JSON.stringify({ score: v }) });
+        toast('Score saved.', 'ok');
+        if (ASSESS_OPEN) ASSESS_SUBS = await api(`/assessments/${ASSESS_OPEN}/submissions`);
+        if (REPORT.classId) REPORT.data = null;
+        renderPage();
+      } catch (err) { apiErrorToast(err); }
+    }
+
+    function releaseButton(a) {
+      return a.scores_released
+        ? `<span class="pill pill-ok">Scores released</span><button class="btn btn-outline btn-sm" onclick="setRelease('${a.id}', false)">Hide scores</button>`
+        : `<span class="pill pill-warn">Scores hidden from students</span><button class="btn btn-gold btn-sm" onclick="setRelease('${a.id}', true)">Release scores</button>`;
+    }
+    async function setRelease(id, released) {
+      try {
+        await api(`/assessments/${id}/release`, { method: 'POST', body: JSON.stringify({ released }) });
+        toast(released ? 'Scores released to students.' : 'Scores hidden from students.', 'ok');
+        await loadClassDetail(ST.activeClassId);
+      } catch (err) { apiErrorToast(err); }
+    }
+
+    /* ---- Assessments (teacher) ---- */
+    const ASSESS_TYPE = { quizzes: 'quiz', exams: 'exam', activities: 'activity' };
+    const ASSESS_LABEL = { quiz: 'Quiz', exam: 'Exam', activity: 'Activity' };
+    const ASSESS_PLURAL = { quiz: 'quizzes', exam: 'exams', activity: 'activities' };
+
+    function fmtDateTime(iso) {
+      if (!iso) return '—';
+      return new Date(iso).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
+    }
+    function toLocalInput(iso) {
+      if (!iso) return '';
+      const d = new Date(iso), p = n => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+    }
+    function defaultEnd() {
+      const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(0, 0, 0, 0);
+      return toLocalInput(d.toISOString());
+    }
+    function assessmentStatus(a) {
+      const now = Date.now();
+      if (a.opens_at && new Date(a.opens_at).getTime() > now) return '<span class="pill pill-warn">Scheduled</span>';
+      if (a.closes_at && new Date(a.closes_at).getTime() < now) return '<span class="pill pill-neutral">Closed</span>';
+      return '<span class="pill pill-ok">Open</span>';
+    }
+
+
+    function openCreateAssessment(type = 'quiz') {
+      const label = ASSESS_LABEL[type];
+      openModal(`<h3 style="margin-bottom:12px;">Create ${label}</h3>
+    <form onsubmit="return createAssessment(event)">
+    <input type="hidden" id="asType" value="${type}">
+    <div class="field"><label>Title</label><input id="asTitle" required placeholder="e.g. ${label} 1 - Normalization"></div>
+    <div class="field"><label>Maximum Score</label><input id="asPoints" type="number" min="1" step="1" required placeholder="e.g. 50"><div class="hint">Set by you — any whole number. Scores are entered out of this number (e.g. 20/50).</div></div>
+    <div class="field"><label>Opens (optional)</label><input id="asOpens" type="datetime-local"></div>
+    <div class="field"><label>Ends (time limit)</label><input id="asCloses" type="datetime-local" value="${defaultEnd()}"></div>
+    <div class="hint" style="margin-bottom:12px;">Students can't scan or submit after the end time. Clear it for no limit.</div>
+    <div class="hint" style="margin-bottom:12px;">Students submit a photo of their paper from their subject page while it's open.</div>
+    <button class="btn btn-primary" type="submit">Create</button></form>`);
+    }
+    async function createAssessment(e) {
+      e.preventDefault();
+      const v = id => document.getElementById(id).value;
+      const opens = v('asOpens'), closes = v('asCloses');
+      const points = Number(v('asPoints'));
+      if (!Number.isInteger(points) || points < 1) { toast('Enter the maximum score (a whole number of at least 1).', 'err'); return false; }
+      if (opens && closes && new Date(closes) <= new Date(opens)) { toast('The end time must be after the start time.', 'err'); return false; }
+      const payload = {
+        type: v('asType'), title: v('asTitle').trim(), total_points: points,
+        opens_at: opens ? new Date(opens).toISOString() : null, closes_at: closes ? new Date(closes).toISOString() : null
+      };
+      try {
+        await api(`/classes/${ST.activeClassId}/assessments`, { method: 'POST', body: JSON.stringify(payload) });
+        closeModal(); toast('Created.', 'ok');
+        await loadClassDetail(ST.activeClassId);
+      } catch (err) { apiErrorToast(err); }
+      return false;
+    }
+
+    function openEditAssessment(id) {
+      const a = CACHE.classDetail.assessments.find(x => String(x.id) === String(id));
+      const label = ASSESS_LABEL[a.type || 'quiz'];
+      openModal(`<h3 style="margin-bottom:12px;">Edit ${label}</h3>
+          <div class="field"><label>Title</label><input id="edTitle" value="${esc(a.title)}"></div>
+          <div class="field"><label>Maximum Score</label><input id="edPoints" type="number" min="1" step="1" required value="${a.total_points}"></div>
+          <div class="field"><label>Opens (optional)</label><input id="edOpens" type="datetime-local" value="${toLocalInput(a.opens_at)}"></div>
+          <div class="field"><label>Ends (time limit)</label><input id="edCloses" type="datetime-local" value="${toLocalInput(a.closes_at)}"></div>
+          <div class="hint" style="margin-bottom:12px;">Clear a time to remove that limit.</div>
+          <button class="btn btn-primary" onclick="saveAssessment('${id}')">Save Changes</button>
+          <button class="btn btn-danger" style="margin-top:10px;" onclick="deleteAssessment('${id}')">Delete ${label}</button>`);
+    }
+    async function deleteAssessment(id) {
+      const a = CACHE.classDetail.assessments.find(x => String(x.id) === String(id));
+      const n = a.submissions_count || 0;
+      if (!confirm(`Delete "${a.title}"? ${n ? `This also deletes ${n} submission(s). ` : ''}This cannot be undone.`)) return;
+      try {
+        await api(`/assessments/${id}`, { method: 'DELETE' });
+        closeModal(); toast('Deleted.', 'ok');
+        await loadClassDetail(ST.activeClassId);
+      } catch (err) { apiErrorToast(err); }
+    }
+
+    async function saveAssessment(id) {
+      const v = x => document.getElementById(x).value;
+      const title = v('edTitle').trim(), opens = v('edOpens'), closes = v('edCloses');
+      if (!title) { toast('Title is required.', 'err'); return; }
+      const points = Number(v('edPoints'));
+      if (!Number.isInteger(points) || points < 1) { toast('Enter the maximum score (a whole number of at least 1).', 'err'); return; }
+      if (opens && closes && new Date(closes) <= new Date(opens)) { toast('The end time must be after the start time.', 'err'); return; }
+      try {
+        await api(`/assessments/${id}`, {
+          method: 'PUT', body: JSON.stringify({
+            title, total_points: points,
+            opens_at: opens ? new Date(opens).toISOString() : null, closes_at: closes ? new Date(closes).toISOString() : null
+          })
+        });
+        closeModal(); toast('Updated.', 'ok');
+        await loadClassDetail(ST.activeClassId);
+      } catch (err) { apiErrorToast(err); }
+    }
+
+    async function viewSubmissions(assessmentId) {
+      try {
+        const subs = await api(`/assessments/${assessmentId}/submissions`);
+        const a = CACHE.classDetail.assessments.find(x => String(x.id) === String(assessmentId));
+        const submissionHtml = subs.length
+          ? subs.map(s => {
+            const name = (s.student && s.student.name) || 'Unknown student';
+            const verification = s.verification || 'pending';
+            const pillClass = verification === 'verified' ? 'pill-ok' : 'pill-warn';
+            return `
+                  <div class="card" style="box-shadow:none;border:1.5px solid #EAF2F0;margin-bottom:10px;padding:12px;">
+                    <div class="row between"><strong>${esc(name)}</strong><span class="pill ${pillClass}">${esc(verification)}</span></div>
+                    <div style="margin-top:8px;">${authImg(s.image_url, name + ' — ' + (a ? a.title : ''), 'captured-img', 'max-height:180px;cursor:zoom-in;')}</div>
+                    <div class="row" style="gap:8px;margin-top:8px;align-items:center;">
+                      <input class="score-input" placeholder="0/${a ? a.total_points : ''}" id="score_${s.id}" value="${s.score ?? 0}"><span style="font-size:12px;color:var(--ink-400);">/ ${a ? a.total_points : ''}</span>
+                      <button class="btn btn-primary btn-sm" style="width:auto;" onclick="verifySubmission('${s.id}','${assessmentId}')">Save &amp; Verify</button>
+                    </div>
+                  </div>`;
+          }).join('')
+          : '<div class="empty">No submissions yet.</div>';
+
+        openModal(`<h3 style="margin-bottom:4px;">${esc(a ? a.title : '')} — Submissions</h3><p style="color:var(--ink-400);font-size:13px;margin-bottom:12px;">${subs.length} submission(s)</p>${submissionHtml}`);
+      } catch (err) { apiErrorToast(err); }
+    }
+    async function verifySubmission(subId, assessmentId) {
+      const score = document.getElementById('score_' + subId).value;
+      try {
+        await api(`/submissions/${subId}/verify`, { method: 'POST', body: JSON.stringify({ score: score.trim() === '' ? null : score.trim() }) });
+        toast('Submission verified.', 'ok'); viewSubmissions(assessmentId);
+      } catch (err) { apiErrorToast(err); }
+    }
+
+    /* ============================= SUBJECT REPORT CARD (teacher: all students; student: own, released only) ============================= */
+    let REPORT = { classId: null, data: null, loading: false, failed: false };
+    async function loadReportCard(classId) {
+      REPORT = { classId, data: null, loading: true, failed: false }; renderPage();
+      try {
+        const data = await api(`/classes/${classId}/report-card`);
+        if (String(REPORT.classId) === String(classId)) REPORT = { classId, data, loading: false, failed: false };
+      } catch (err) { apiErrorToast(err); REPORT.loading = false; REPORT.failed = true; }
+      renderPage();
+    }
+    function reportCardTab(c) {
+      if (String(REPORT.classId) !== String(c.id) || !REPORT.data) {
+        const sameClass = String(REPORT.classId) === String(c.id);
+        if (sameClass && REPORT.failed) return `<div class="empty">Could not load the report card. <button class="btn btn-outline btn-sm" onclick="loadReportCard('${c.id}')">Try again</button></div>`;
+        if (!REPORT.loading) setTimeout(() => loadReportCard(c.id));
+        return `<div class="loading">Loading report card…</div>`;
+      }
+      const d = REPORT.data, isTeacher = ST.user.role === 'teacher';
+      const groups = [['quiz', 'Quizzes'], ['exam', 'Exams'], ['activity', 'Activities']]
+        .map(([t, l]) => ({ t, l, items: d.assessments.filter(a => (a.type || 'quiz') === t) }));
+      const frac = t => t && t.max ? `${t.earned} / ${t.max}` : '—';
+
+      const held = d.sessions_held || 0;
+      const attCols = [['present', 'Present'], ['late', 'Late'], ['excused', 'Excused'], ['absent', 'Absent']];
+      const head1 = `<tr><th rowspan="2">Student</th><th rowspan="2">Student ID</th><th colspan="${attCols.length + 1}" class="att-head">Attendance · ${held} session${held === 1 ? '' : 's'}</th>${groups.map(g => `<th colspan="${g.items.length + 1}">${g.l}</th>`).join('')}<th rowspan="2">Total</th><th rowspan="2">%</th></tr>`;
+      const head2 = `<tr>${attCols.map(([, l]) => `<th class="att">${l}</th>`).join('')}<th class="att sub" title="Present + Late, out of sessions held">Rate</th>${groups.map(g => g.items.map(a => `<th title="${esc(a.title)}">${esc(a.title.length > 18 ? a.title.slice(0, 17) + '…' : a.title)}<div style="font-size:11px;font-weight:500;color:var(--ink-400);">/ ${a.total_points}${isTeacher && !a.released ? ' · hidden' : ''}</div></th>`).join('') + `<th class="sub">Subtotal</th>`).join('')}</tr>`;
+      const rows = d.students.map(st => {
+        const cells = groups.map(g => g.items.map(a => {
+          const sc = st.scores[a.id] || {};
+          const photo = sc.submitted && sc.submission_id ? ` <span title="View photo" style="cursor:zoom-in;" onclick="event.stopPropagation();openImageViewer('/api/submissions/${sc.submission_id}/image', '${esc(String(st.name).replace(/'/g, ''))} — ${esc(String(a.title).replace(/'/g, ''))}')">📷</span>` : '';
+          if (isTeacher) return `<td class="editable" title="Click to edit score" onclick="editReportScore('${a.id}','${st.student_id}')">${sc.score ?? 0}${photo}</td>`;
+          return `<td>${sc.score == null ? '<span style="font-size:12px;color:var(--ink-400);">Not yet released</span>' : sc.score}${photo}</td>`;
+        }).join('') + `<td class="sub">${frac(st.totals[g.t])}</td>`).join('');
+        const pct = st.totals.overall.percent;
+        const at = st.attendance || {};
+        const attended = (at.present || 0) + (at.late || 0);
+        const attCells = attCols.map(([k]) => `<td class="att${k === 'absent' && at[k] ? ' att-absent' : ''}">${at[k] ?? 0}</td>`).join('')
+          + `<td class="att sub">${at.total ? Math.round(attended / at.total * 100) + '%' : '—'}</td>`;
+        return `<tr><td>${esc(st.name)}</td><td>${esc(st.school_id || '—')}</td>${attCells}${cells}<td class="sub">${frac(st.totals.overall)}</td><td class="sub">${pct == null ? '—' : pct + '%'}</td></tr>`;
+      }).join('');
+      const colspan = 4 + attCols.length + 1 + groups.reduce((n, g) => n + g.items.length + 1, 0);
+
+      return `<div class="row between wrap" style="gap:10px;margin-bottom:12px;"><div>
+      <h3>${esc(d.class.name)} — Report Card</h3>
+      <div style="font-size:13px;color:var(--ink-400);margin-top:4px;">${isTeacher ? `${d.students.length} enrolled student(s) · ${d.assessments.length} assessment(s). Attendance counts one per session held (no Time In = absent). Scores come straight from the quizzes, exams and activities; click a score to edit it.` : 'Attendance counts one per class session. Only scores your teacher has released are shown and counted in your totals.'}</div></div>
+      <button class="btn btn-outline btn-sm" onclick="loadReportCard('${c.id}')">↻ Refresh</button></div>
+  <div class="table-wrap"><table class="report"><thead>${head1}${head2}</thead><tbody>
+  ${rows || `<tr><td colspan="${colspan}"><div class="empty">${isTeacher ? 'No enrolled students yet.' : 'No report yet.'}</div></td></tr>`}
+  </tbody></table></div>`;
+    }
+    function editReportScore(assessmentId, studentId) {
+      const d = REPORT.data; if (!d) return;
+      const a = d.assessments.find(x => String(x.id) === String(assessmentId));
+      const st = d.students.find(x => String(x.student_id) === String(studentId));
+      const cur = (st.scores[a.id] || {}).score ?? 0;
+      openModal(`<h3 style="margin-bottom:4px;">${esc(a.title)}</h3>
+  <p style="color:var(--ink-400);font-size:13px;margin-bottom:14px;">${esc(st.name)} · ${esc(st.school_id || '')}</p>
+  <form onsubmit="return saveReportScore(event, '${a.id}', '${st.student_id}')">
+    <div class="field"><label>Score (out of ${a.total_points})</label><input id="rpScore" value="${cur}" placeholder="e.g. 20 or 20/${a.total_points}" autofocus></div>
+    <button class="btn btn-primary" type="submit">Save Score</button></form>`);
+    }
+    async function saveReportScore(e, assessmentId, studentId) {
+      e.preventDefault();
+      try {
+        await api(`/assessments/${assessmentId}/scores/${studentId}`, { method: 'PUT', body: JSON.stringify({ score: document.getElementById('rpScore').value.trim() }) });
+        closeModal(); toast('Score saved.', 'ok');
+        await loadReportCard(REPORT.classId);
+      } catch (err) { apiErrorToast(err); }
+      return false;
+    }
+
+    /* ============================= TEACHER: REPORTS ============================= */
+    function teacherReports() {
+      const classes = CACHE.classes;
+      return `<div class="section-title"><h3>Reports</h3></div><div class="grid grid-2">
+      ${classes.length ? classes.map(c => `<div class="card"><h3 style="font-size:16px;">${esc(c.name)}</h3>
+      <div style="font-size:13px;color:var(--ink-400);margin:6px 0 12px;">${c.approved_count || 0} enrolled students</div>
+      <div class="row wrap" style="gap:8px;">
+        <button class="btn btn-gold btn-sm" onclick="openClass('${c.id}', 'report')">📋 Report Card</button>
+        <button class="btn btn-outline btn-sm" onclick="downloadCsv('/classes/${c.id}/reports/attendance.csv', 'attendance-${c.id}.csv')">⬇ Attendance CSV</button>
+        <button class="btn btn-outline btn-sm" onclick="downloadCsv('/classes/${c.id}/reports/scores.csv', 'scores-${c.id}.csv')">⬇ Scores CSV</button>
+      </div></div>`).join('') : `<div class="empty" style="grid-column:1/-1;">No classes yet.</div>`}</div>`;
+    }
+
+    /* ============================= INIT ============================= */
+    (async function init() {
+      if (TOKEN) { await tryRestoreSession(); }
+      render();
+    })();
+
+  </script>
+</body>
+
+</html>
