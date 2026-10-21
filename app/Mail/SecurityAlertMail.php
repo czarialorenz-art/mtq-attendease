@@ -20,7 +20,7 @@ class SecurityAlertMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            from: new Address(config('mail.from.address'), 'MTQ-ATTENDEASE'),
+            from: new Address(config('mail.from.address') ?: 'no-reply@mqcqc.ph.education', 'MTQ-ATTENDEASE'),
             subject: "Security alert: {$this->title}",
         );
     }

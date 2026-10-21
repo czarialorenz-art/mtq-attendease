@@ -12,6 +12,8 @@ use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
+    private const STATUS_LABELS = ['pending' => 'Pending', 'accepted' => 'Accepted', 'rejected' => 'Not Accepted'];
+
     public function attendanceCsv(Request $request, Classroom $class)
     {
         abort_unless($class->teacher_id === $request->user()->id, 403, 'Not your class.');
@@ -50,21 +52,23 @@ class ReportController extends Controller
             ->values();
 
         return $this->csv("scores-{$class->id}.csv",
-            ['Subject', 'Type', 'Assessment', 'Student', 'ID Number', 'Email', 'Score', 'Total Points', 'Verified', 'Submitted At'],
+            ['Subject', 'Type', 'Assessment', 'Student', 'ID Number', 'Email', 'Score', 'Total Points', 'Status', 'Submitted At'],
             $subs->map(fn ($s) => [
                 $class->name,
                 ucfirst($s->assessment?->type ?? 'quiz'),
                 $s->assessment?->title,
                 $s->student?->name, $s->student?->school_id, $s->student?->email,
-                $s->score, $s->assessment?->total_points,
-                $s->is_verified ? 'Yes' : 'No',
+                // only accepted scores are official
+                $s->isAccepted() ? $s->score : '', $s->assessment?->total_points,
+                self::STATUS_LABELS[$s->status] ?? 'Pending',
                 $s->submitted_at?->copy()->timezone('Asia/Manila')->format('Y-m-d h:i A'),
             ]));
     }
 
     /**
      * Subject report card, built from the assessment records every time (no separate copy of scores).
-     * Teacher: every approved student, all scores. Student: only their own row and released scores.
+     * Only accepted scores are official. Teacher: every approved student; assessments without an accepted
+     * score count as 0. Student: only their own row, and only accepted scores are shown and counted.
      */
     public function reportCard(Request $request, Classroom $class)
     {
@@ -88,12 +92,13 @@ class ReportController extends Controller
 
             foreach ($assessments as $a) {
                 $sub = $subs->get($a->id . ':' . $u->id);
-                $visible = $isTeacher || $a->scoresReleased();
-                $score = $sub?->score ?? 0; // no record yet = default score of 0
+                $accepted = (bool) $sub?->isAccepted();
+                $visible = $isTeacher || $accepted;
+                $score = $accepted ? $sub->score : 0; // no record yet / pending / not accepted = 0
 
                 $scores[$a->id] = [
-                    'score' => $visible ? $score : null,
-                    'released' => $a->scoresReleased(),
+                    'score' => $accepted || ($isTeacher && ! $sub) ? $score : null,
+                    'status' => $sub?->status,
                     'recorded' => (bool) $sub,
                     'submitted' => (bool) $sub?->hasImage(),
                     'submission_id' => $sub?->id,
@@ -129,7 +134,6 @@ class ReportController extends Controller
                 'title' => $a->title,
                 'type' => $a->type,
                 'total_points' => (int) $a->total_points,
-                'released' => $a->scoresReleased(),
             ])->values(),
             'sessions_held' => $attendance['held'],
             'students' => $rows->values(),

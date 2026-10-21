@@ -227,28 +227,19 @@ class AttendEaseFeaturesTest extends TestCase
         $other = Classroom::create(['teacher_id' => $this->teacher->id, 'name' => 'Science', 'join_code' => strtoupper(substr(uniqid(), -6))]);
         $this->assertSame([], $this->getJson("/api/classes/{$other->id}/report-card")->json('assessments'));
 
-        // Students: unreleased scores hidden everywhere; cannot modify or release
+        // Students: only their own accepted scores (a teacher-entered score counts as accepted); cannot modify or decide
         Sanctum::actingAs($this->alice);
         $mine = $this->getJson("/api/classes/{$this->class->id}/report-card")->assertOk()->json();
         $this->assertCount(1, $mine['students']);
-        $this->assertNull($mine['students'][0]['scores'][$quiz['id']]['score']);
-        $this->assertSame(0, $mine['students'][0]['totals']['overall']['max']);
-        $this->assertNull(collect($this->getJson('/api/my-assessments')->json())->firstWhere('id', $quiz['id'])['score']);
-        $this->assertNull(collect($this->getJson("/api/classes/{$this->class->id}/assessments")->json())->firstWhere('id', $quiz['id'])['score']);
-        $this->putJson("/api/assessments/{$quiz['id']}/scores/{$this->alice->id}", ['score' => '50'])->assertForbidden();
-        $this->postJson("/api/submissions/{$sub->id}/verify", ['score' => 50])->assertForbidden();
-        $this->postJson("/api/assessments/{$quiz['id']}/release")->assertForbidden();
-        $this->getJson("/api/assessments/{$quiz['id']}/submissions")->assertForbidden();
-
-        // Release the quiz only
-        Sanctum::actingAs($this->teacher);
-        $this->postJson("/api/assessments/{$quiz['id']}/release", ['released' => true])->assertOk()->assertJsonPath('scores_released', true);
-        Sanctum::actingAs($this->alice);
-        $mine = $this->getJson("/api/classes/{$this->class->id}/report-card")->json('students.0');
-        $this->assertSame(45, $mine['scores'][$quiz['id']]['score']);
-        $this->assertNull($mine['scores'][$exam['id']]['score']);
-        $this->assertEquals(['earned' => 45, 'max' => 50, 'percent' => 90.0], $mine['totals']['overall']);
+        $this->assertSame(45, $mine['students'][0]['scores'][$quiz['id']]['score']);
+        $this->assertNull($mine['students'][0]['scores'][$exam['id']]['score']);
+        $this->assertEquals(['earned' => 45, 'max' => 50, 'percent' => 90.0], $mine['students'][0]['totals']['overall']);
         $this->assertSame(45, collect($this->getJson('/api/my-assessments')->json())->firstWhere('id', $quiz['id'])['score']);
+        $this->assertNull(collect($this->getJson("/api/classes/{$this->class->id}/assessments")->json())->firstWhere('id', $exam['id'])['score']);
+        $this->putJson("/api/assessments/{$quiz['id']}/scores/{$this->alice->id}", ['score' => '50'])->assertForbidden();
+        $this->postJson("/api/submissions/{$sub->id}/decision", ['status' => 'accepted'])->assertForbidden();
+        $this->postJson("/api/assessments/{$quiz['id']}/release")->assertNotFound();
+        $this->getJson("/api/assessments/{$quiz['id']}/submissions")->assertForbidden();
 
         // Another teacher has no access
         Sanctum::actingAs($this->otherTeacher);
@@ -331,9 +322,8 @@ class AttendEaseFeaturesTest extends TestCase
         $reg([])->assertStatus(422)->assertJsonPath('errors.section.0', 'Please choose your section (A, B, or C).');
         $reg(['section' => 'IT-4A'])->assertStatus(422);
         $reg(['section' => 'D'])->assertStatus(422);
-        // Sign-up now returns "verify your email" instead of the account; check what was saved
         $newest = fn () => User::latest('id')->first();
-        $reg(['section' => 'B'])->assertCreated()->assertJsonPath('verification_required', true);
+        $reg(['section' => 'B'])->assertCreated()->assertJsonPath('user.section', 'B');
         $this->assertSame('B', $newest()->section);
         // Teachers have no section
         $reg(['role' => 'teacher', 'department' => 'IT'])->assertCreated();
@@ -357,6 +347,75 @@ class AttendEaseFeaturesTest extends TestCase
         $this->putJson('/api/profile', $profile + ['section' => 'C'])->assertOk()->assertJsonPath('section', 'C');
     }
 
+    public function test_submitting_twice_keeps_the_first_photo_and_score(): void
+    {
+        Sanctum::actingAs($this->teacher);
+        $a = $this->postJson("/api/classes/{$this->class->id}/assessments", ['title' => 'Quiz', 'type' => 'quiz', 'total_points' => 10])->json();
+
+        $this->freezeTime(); // double tap: both uploads get the same time()
+        Sanctum::actingAs($this->alice);
+        $img = 'data:image/png;base64,' . base64_encode(imagepng_bytes());
+        $first = $this->postJson("/api/assessments/{$a['id']}/submit", ['image' => $img, 'score' => 8])->assertCreated()->json();
+        $this->postJson("/api/assessments/{$a['id']}/submit", ['image' => $img, 'score' => 10])->assertStatus(409);
+
+        $sub = Submission::find($first['id']);
+        $this->assertSame(8, $sub->claimed_score);
+        Storage::disk('local')->assertExists($sub->answer);
+        $this->assertCount(1, Storage::disk('local')->files("submissions/{$a['id']}"));
+        $this->getJson("/api/submissions/{$sub->id}/image")->assertOk();
+    }
+
+    public function test_student_enters_score_and_teacher_accepts_or_rejects_it(): void
+    {
+        Sanctum::actingAs($this->teacher);
+        $a = $this->postJson("/api/classes/{$this->class->id}/assessments", ['title' => 'Quiz', 'type' => 'quiz', 'total_points' => 20])->json();
+
+        Sanctum::actingAs($this->alice);
+        $img = 'data:image/png;base64,' . base64_encode(imagepng_bytes());
+        $url = "/api/assessments/{$a['id']}/submit";
+        $this->postJson($url, ['image' => $img])->assertStatus(422)->assertJsonValidationErrors('score');
+        $this->postJson($url, ['image' => $img, 'score' => 'abc'])->assertStatus(422);
+        $this->postJson($url, ['image' => $img, 'score' => -1])->assertStatus(422);
+        $this->postJson($url, ['image' => $img, 'score' => 21])->assertStatus(422);
+        $res = $this->postJson($url, ['image' => $img, 'score' => 17.5])->assertCreated()
+            ->assertJsonPath('status', 'pending')->json();
+
+        // Pending: the student sees their entered score but no official score
+        $mine = collect($this->getJson('/api/my-assessments')->json())->firstWhere('id', $a['id']);
+        $this->assertSame('pending', $mine['status']);
+        $this->assertEquals(17.5, $mine['claimed_score']);
+        $this->assertNull($mine['score']);
+        $this->postJson("/api/submissions/{$res['id']}/decision", ['status' => 'accepted'])->assertForbidden();
+
+        // Only the class teacher decides
+        Sanctum::actingAs($this->otherTeacher);
+        $this->postJson("/api/submissions/{$res['id']}/decision", ['status' => 'accepted'])->assertForbidden();
+
+        Sanctum::actingAs($this->teacher);
+        $this->postJson("/api/submissions/{$res['id']}/decision", ['status' => 'maybe'])->assertStatus(422);
+        $this->postJson("/api/submissions/{$res['id']}/decision", ['status' => 'accepted'])->assertOk()
+            ->assertJsonPath('status', 'accepted')->assertJsonPath('score', 17.5);
+        $csv = $this->get("/api/classes/{$this->class->id}/reports/scores.csv")->streamedContent();
+        $this->assertStringContainsString('Status', $csv);
+        $this->assertStringContainsString('17.5,20,Accepted', $csv);
+
+        Sanctum::actingAs($this->alice);
+        $this->assertEquals(17.5, collect($this->getJson('/api/my-assessments')->json())->firstWhere('id', $a['id'])['score']);
+
+        // The teacher can change the decision; not accepted = no official score
+        Sanctum::actingAs($this->teacher);
+        $this->postJson("/api/submissions/{$res['id']}/decision", ['status' => 'rejected'])->assertOk()->assertJsonPath('status', 'rejected');
+        $csv = $this->get("/api/classes/{$this->class->id}/reports/scores.csv")->streamedContent();
+        $this->assertStringContainsString(',,20,"Not Accepted"', $csv);
+
+        Sanctum::actingAs($this->alice);
+        $mine = collect($this->getJson('/api/my-assessments')->json())->firstWhere('id', $a['id']);
+        $this->assertSame('rejected', $mine['status']);
+        $this->assertNull($mine['score']);
+        $this->assertSame(0, $this->getJson("/api/classes/{$this->class->id}/report-card")->json('students.0.totals.overall.max'));
+        $this->postJson($url, ['image' => $img, 'score' => 20])->assertStatus(409);
+    }
+
     public function test_submitted_picture_is_viewable_by_teacher_and_owner_only(): void
     {
         Sanctum::actingAs($this->teacher);
@@ -364,7 +423,7 @@ class AttendEaseFeaturesTest extends TestCase
 
         $png = base64_encode(imagepng_bytes());
         Sanctum::actingAs($this->alice);
-        $res = $this->postJson("/api/assessments/{$a['id']}/submit", ['image' => 'data:image/png;base64,' . $png])->assertCreated()->json();
+        $res = $this->postJson("/api/assessments/{$a['id']}/submit", ['image' => 'data:image/png;base64,' . $png, 'score' => 5])->assertCreated()->json();
         $this->assertSame("/api/submissions/{$res['id']}/image", $res['image_url']);
         $this->assertSame(0, Submission::find($res['id'])->score);
         $this->getJson($res['image_url'])->assertOk()->assertHeader('Content-Type', 'image/png');

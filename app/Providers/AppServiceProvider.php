@@ -5,6 +5,7 @@ namespace App\Providers;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -22,7 +23,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Sign-in, sign-up and code checks: 10 a minute per account, so password/code guessing is slow,
+        // Production (InfinityFree) is served over HTTPS; phone cameras only work on HTTPS pages
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
+        // Sign-in and sign-up: 10 a minute per account, so password guessing is slow,
         // but a whole class signing in from the same school Wi-Fi (one IP) is not blocked.
         RateLimiter::for('auth', function (Request $request) {
             $email = strtolower(trim((string) $request->input('email', optional($request->user())->email)));

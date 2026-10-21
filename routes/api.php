@@ -11,12 +11,10 @@ use App\Http\Controllers\Api\ReportController;
 use Illuminate\Support\Facades\Route;
 
 // ---------- Public ----------
-// Rate-limited per account (see AppServiceProvider) to slow down password and code guessing
+// Rate-limited per account (see AppServiceProvider) to slow down password guessing
 Route::middleware('throttle:auth')->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/email/verify', [AuthController::class, 'verifyEmail']);
-    Route::post('/email/resend', [AuthController::class, 'resendCode']);
 });
 
 // ---------- Authenticated ----------
@@ -25,7 +23,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
-    Route::post('/profile/email/verify', [AuthController::class, 'verifyEmailChange'])->middleware('throttle:auth');
     Route::post('/classes/{class}/schedule', [ClassController::class, 'schedule']);
 
     // Classes
@@ -65,9 +62,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/assessments/{assessment}/submit', [AssessmentController::class, 'submit']);
     Route::get('/assessments/{assessment}/submissions', [AssessmentController::class, 'submissions']);
     Route::post('/submissions/{submission}/verify', [AssessmentController::class, 'verify']);
+    Route::post('/submissions/{submission}/decision', [AssessmentController::class, 'decision']);
     Route::get('/submissions/{submission}/image', [AssessmentController::class, 'image']);
     Route::put('/assessments/{assessment}/scores/{student}', [AssessmentController::class, 'setScore']);
-    Route::post('/assessments/{assessment}/release', [AssessmentController::class, 'release']);
     Route::get('/my-assessments', [AssessmentController::class, 'myAssessments']);
 
     // Calendar

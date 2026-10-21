@@ -4,10 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\EmailVerification;
+use App\Support\SecurityAlerts;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -50,67 +49,11 @@ class AuthController extends Controller
         'department' => $data['department'] ?? null,
     ]);
 
-    // The account can't be used until the owner proves the mailbox is theirs
-    try {
-        EmailVerification::send($user, $user->email, 'register');
-    } catch (\Throwable $e) {
-        Log::error('Verification email failed: ' . $e->getMessage());
-        $user->delete();
-
-        return response()->json(['message' => "We couldn't send a verification email right now. Please try again later."], 503);
-    }
-
     return response()->json([
-        'message' => "We sent a 6-digit code to {$user->email}. Enter it to activate your account.",
-        'verification_required' => true,
-        'email' => $user->email,
+        'user' => $user,
+        'token' => $user->createToken('api')->plainTextToken,
     ], 201);
 }
-
-    /** Confirms a new account's email with its code, then signs the user in. */
-    public function verifyEmail(Request $request)
-    {
-        $data = $request->validate(['email' => 'required|email', 'code' => 'required|string']);
-        $user = User::where('email', strtolower(trim($data['email'])))->first();
-
-        if (! $user) {
-            return response()->json(['message' => 'That code is incorrect or has expired.'], 422);
-        }
-        if ($user->email_verified_at) {
-            return response()->json(['message' => 'This email is already verified. Please log in.'], 409);
-        }
-        if ($error = EmailVerification::check($user, $data['code'])) {
-            return response()->json(['message' => $error], 422);
-        }
-
-        $user->forceFill(['email_verified_at' => now()])->save();
-        EmailVerification::alert($user->email, $user->name, 'Your account is ready',
-            'Your email was verified and your MTQ-ATTENDEASE account is now active.', $request);
-
-        return response()->json(['user' => $user->fresh(), 'token' => $user->createToken('api')->plainTextToken]);
-    }
-
-    /** Sends another code for an unverified account. Same reply whether or not the email exists. */
-    public function resendCode(Request $request)
-    {
-        $data = $request->validate(['email' => 'required|email']);
-        $user = User::where('email', strtolower(trim($data['email'])))->whereNull('email_verified_at')->first();
-
-        if ($user && EmailVerification::cooldown($user) === 0) {
-            try {
-                EmailVerification::send($user, $user->email, 'register');
-            } catch (\Throwable $e) {
-                Log::error('Verification email failed: ' . $e->getMessage());
-
-                return response()->json(['message' => "We couldn't send the email right now. Please try again later."], 503);
-            }
-        }
-
-        return response()->json([
-            'message' => 'If this account still needs verification, a new code is on its way. You can ask again in a minute.',
-            'retry_after' => $user ? max(EmailVerification::cooldown($user), 0) : EmailVerification::RESEND_SECONDS,
-        ]);
-    }
 
     public function login(Request $request)
     {
@@ -128,23 +71,7 @@ class AuthController extends Controller
             ]);
         }
 
-        if (! $user->email_verified_at) {
-            if (EmailVerification::cooldown($user) === 0) {
-                try {
-                    EmailVerification::send($user, $user->email, 'register');
-                } catch (\Throwable $e) {
-                    Log::error('Verification email failed: ' . $e->getMessage());
-                }
-            }
-
-            return response()->json([
-                'message' => 'Please verify your email first. Enter the 6-digit code we sent to ' . $user->email . '.',
-                'verification_required' => true,
-                'email' => $user->email,
-            ], 403);
-        }
-
-        EmailVerification::alert($user->email, $user->name, 'New sign-in to your account',
+        SecurityAlerts::send($user->email, $user->name, 'New sign-in to your account',
             'Your MTQ-ATTENDEASE account was just signed in to.', $request);
 
         return response()->json([
@@ -195,53 +122,14 @@ class AuthController extends Controller
             unset($data['department']);
         }
 
-        // A new email only takes effect after its owner enters the code sent to it
-        $newEmail = $data['email'];
-        unset($data['email']);
+        $oldEmail = $user->email;
         $user->update($data);
 
-        if ($newEmail === $user->email) {
-            if ($user->pending_email) {
-                $user->forceFill(['pending_email' => null, 'verification_code' => null, 'verification_expires_at' => null])->save();
-            }
-        } elseif ($newEmail !== $user->pending_email || EmailVerification::cooldown($user) === 0) {
-            try {
-                EmailVerification::send($user, $newEmail, 'email_change');
-            } catch (\Throwable $e) {
-                Log::error('Verification email failed: ' . $e->getMessage());
-
-                return response()->json(['message' => "We couldn't send a code to {$newEmail} right now. Your other changes were saved."], 503);
-            }
-            $user->forceFill(['pending_email' => $newEmail])->save();
-            EmailVerification::alert($user->email, $user->name, 'Email change requested',
-                "Someone asked to change your account's email to {$newEmail}. It will only change after the code sent to that address is entered.", $request);
+        // Tell the previous address, so the owner notices if someone else changed it
+        if ($user->email !== $oldEmail) {
+            SecurityAlerts::send($oldEmail, $user->name, 'Your email was changed',
+                "Your account's email was changed from {$oldEmail} to {$user->email}.", $request);
         }
-
-        return response()->json($user->fresh());
-    }
-
-    /** Confirms a pending email change with the code sent to the new address. */
-    public function verifyEmailChange(Request $request)
-    {
-        $data = $request->validate(['code' => 'required|string']);
-        $user = $request->user();
-
-        if (! $user->pending_email) {
-            return response()->json(['message' => 'There is no email change to confirm.'], 422);
-        }
-        if (User::where('email', $user->pending_email)->whereKeyNot($user->id)->exists()) {
-            $user->forceFill(['pending_email' => null])->save();
-
-            return response()->json(['message' => 'That email is already used by another account.'], 422);
-        }
-        if ($error = EmailVerification::check($user, $data['code'])) {
-            return response()->json(['message' => $error], 422);
-        }
-
-        $old = $user->email;
-        $user->forceFill(['email' => $user->pending_email, 'pending_email' => null, 'email_verified_at' => now()])->save();
-        EmailVerification::alert($old, $user->name, 'Your email was changed',
-            "Your account's email was changed from {$old} to {$user->email}.", $request);
 
         return response()->json($user->fresh());
     }
@@ -263,7 +151,7 @@ class AuthController extends Controller
 
         $user->update(['password' => Hash::make($data['new_password'])]);
 
-        EmailVerification::alert($user->email, $user->name, 'Your password was changed',
+        SecurityAlerts::send($user->email, $user->name, 'Your password was changed',
             'The password for your MTQ-ATTENDEASE account was just changed.', $request);
 
         return response()->json(['message' => 'Password updated.']);

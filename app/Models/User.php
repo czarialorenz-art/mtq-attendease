@@ -13,7 +13,8 @@ class User extends Authenticatable
 
     protected $fillable = ['name', 'email', 'password', 'role', 'school_id', 'course', 'year_level', 'section', 'department'];
 
-    protected $hidden = ['password', 'remember_token', 'verification_code', 'verification_attempts'];
+    protected $hidden = ['password', 'remember_token', 'verification_code', 'verification_attempts',
+        'verification_expires_at', 'verification_sent_at', 'pending_email'];
 
     /** Choices a student picks when signing up or editing their profile. */
     public const SECTIONS = ['A', 'B', 'C'];

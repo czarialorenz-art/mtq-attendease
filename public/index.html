@@ -1117,8 +1117,15 @@
       if (window._scanRAF) { cancelAnimationFrame(window._scanRAF); window._scanRAF = null; }
     }
     async function requestCamera(videoEl, hiRes = false) {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        toast('Camera needs HTTPS (or localhost). Open the site over https://.', 'err'); return false;
+      if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        // Phone browsers only allow the camera on https:// pages (or localhost on the same computer)
+        const https = 'https://' + location.host + location.pathname;
+        openModal(`<h3 style="margin-bottom:10px;">Camera needs a secure (https) page</h3>
+  <p style="font-size:13.5px;color:var(--ink-700);line-height:1.6;margin-bottom:14px;">${location.protocol === 'http:'
+    ? 'This page was opened with <b>http://</b>, so your browser blocks the camera. Open the https address instead:'
+    : 'Your browser does not allow camera access on this page.'}</p>
+  ${location.protocol === 'http:' ? `<a class="btn btn-primary" href="${esc(https)}">Open ${esc(https)}</a>` : ''}`);
+        return false;
       }
       try {
         // Paper photos need a high resolution to keep handwriting readable; QR scanning doesn't
@@ -1131,23 +1138,6 @@
     /* ============================= AUTH ============================= */
     function renderAuth() {
       const app = document.getElementById('app');
-      if (ST.authView === 'verify') {
-        app.innerHTML = `
-    <div class="auth-wrap"><div class="auth-card">
-      <div class="brand"><div class="mark">AE</div><div class="name">MTQ-ATTENDEASE</div></div>
-      <h2 style="margin-bottom:4px;">Check your email</h2>
-      <p style="color:var(--ink-400);font-size:13.5px;margin:4px 0 20px;line-height:1.6;">We sent a 6-digit code to <b style="color:var(--ink-900);">${esc(ST.verifyEmail)}</b>. Enter it below to activate your account. The code expires in 15 minutes.</p>
-      <div id="authMsg"></div>
-      <form onsubmit="return doVerify(event)">
-        <div class="field"><label>Verification Code</label><input id="verifyCode" required inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]{6}" placeholder="123456" style="font-size:22px;letter-spacing:8px;text-align:center;"></div>
-        <button class="btn btn-primary" type="submit">Verify &amp; Continue</button>
-      </form>
-      <div class="switch-line">Didn't get it? Check your spam folder, or <button class="link-btn" id="resendBtn" onclick="resendCode()">send a new code</button></div>
-      <div class="switch-line" style="margin-top:6px;"><button class="link-btn" onclick="ST.authView='login';renderAuth()">← Back to log in</button></div>
-    </div></div>`;
-        setTimeout(() => { const el = document.getElementById('verifyCode'); if (el) el.focus(); }, 50);
-        return;
-      }
       if (ST.authView === 'login') {
         app.innerHTML = `
     <div class="auth-wrap"><div class="auth-card">
@@ -1234,8 +1224,9 @@
         payload.department = document.getElementById('regDept').value.trim();
       }
       try {
-        const res = await api('/register', { method: 'POST', body: JSON.stringify(payload) });
-        showVerify(res.email || payload.email);
+        await api('/register', { method: 'POST', body: JSON.stringify(payload) });
+        authMsg('Account created! You can now log in.', 'ok');
+        setTimeout(() => { ST.authView = 'login'; renderAuth(); }, 900);
       } catch (err) {
         authMsg((err.data && err.data.message) || 'Could not register. Check your details.');
       }
@@ -1252,51 +1243,11 @@
         await bootstrapData();
         render();
       } catch (err) {
-        if (err.status === 403 && err.data && err.data.verification_required) { showVerify(err.data.email || email, err.data.message); return false; }
         authMsg((err.data && err.data.message) || 'Could not log in.');
       }
       return false;
     }
 
-    /* ---- Email verification (6-digit code) ---- */
-    function showVerify(email, message) {
-      ST.authView = 'verify'; ST.verifyEmail = email; renderAuth();
-      if (message) authMsg(message, 'ok');
-    }
-    async function doVerify(e) {
-      e.preventDefault();
-      const code = document.getElementById('verifyCode').value.trim();
-      if (!/^\d{6}$/.test(code)) { authMsg('Enter the 6-digit code from your email.'); return false; }
-      try {
-        const data = await api('/email/verify', { method: 'POST', body: JSON.stringify({ email: ST.verifyEmail, code }) });
-        setToken(data.token);
-        ST.user = data.user; ST.page = 'dashboard'; ST.activeClassId = null; ST.authView = 'login';
-        await bootstrapData();
-        render(); toast('Email verified. Welcome!', 'ok');
-      } catch (err) {
-        if (err.status === 409) { ST.authView = 'login'; renderAuth(); authMsg(err.data.message, 'ok'); return false; }
-        authMsg((err.data && err.data.message) || 'Could not verify the code.');
-      }
-      return false;
-    }
-    async function resendCode() {
-      const btn = document.getElementById('resendBtn');
-      try {
-        const res = await api('/email/resend', { method: 'POST', body: JSON.stringify({ email: ST.verifyEmail }) });
-        authMsg(res.message, 'ok');
-        cooldownButton(btn, res.retry_after || 60, 'send a new code');
-      } catch (err) { authMsg((err.data && err.data.message) || 'Could not send a new code.'); }
-    }
-    function cooldownButton(btn, secs, label) {
-      if (!btn) return;
-      btn.disabled = true;
-      const tick = () => {
-        if (!document.body.contains(btn)) return;
-        if (secs <= 0) { btn.disabled = false; btn.textContent = label; return; }
-        btn.textContent = `${label} (${secs}s)`; secs--; setTimeout(tick, 1000);
-      };
-      tick();
-    }
     async function doLogout() {
       try { await api('/logout', { method: 'POST' }); } catch (e) { }
       setToken(null); ST.user = null; ST.authView = 'login'; ST.page = 'dashboard'; render();
@@ -1496,15 +1447,16 @@
     function restartScanSoon() { setTimeout(() => { if (document.getElementById('scanVideo')) startStudentScan(); }, 1600); }
 
     /* ---- Paper capture flow (camera only) ---- */
-    function canSubmitPhoto(a) { return assessmentStatusKey(a) === 'open' && !a.is_verified; }
+    // One submission per assessment: once sent, the photo and entered score are final
+    function canSubmitPhoto(a) { return assessmentStatusKey(a) === 'open' && !a.submitted && (a.status || 'pending') === 'pending'; }
     function submitPhotoButton(a) {
       if (!canSubmitPhoto(a)) return '';
-      return `<button class="btn btn-gold btn-sm" style="width:auto;" onclick="startSubmission('${a.id}')">📷 ${a.submitted ? 'Retake Photo' : 'Submit Photo'}</button>`;
+      return `<button class="btn btn-gold btn-sm" style="width:auto;" onclick="startSubmission('${a.id}')">📷 Submit Photo</button>`;
     }
     function startSubmission(id) {
       const a = (CACHE.myAssessments || []).find(x => String(x.id) === String(id));
       if (!a) return;
-      ST.pendingCapture = { assessmentId: a.id, title: a.title, type: a.type || 'quiz', classId: a.class_id };
+      ST.pendingCapture = { assessmentId: a.id, title: a.title, type: a.type || 'quiz', classId: a.class_id, total: Number(a.total_points) };
       openCaptureModal();
     }
     function openCaptureModal() {
@@ -1515,6 +1467,11 @@
     <video id="capVideo" playsinline muted></video>
     <canvas id="capCanvas" style="display:none;"></canvas>
     <img id="capPreview" class="captured-img" style="display:none;">
+    <div class="field" id="capScoreWrap" style="display:none;margin-top:12px;">
+      <label for="capScore">Score written on your paper</label>
+      <input id="capScore" type="number" min="0" max="${pc.total}" step="any" inputmode="decimal" placeholder="0 – ${pc.total}" required>
+      <div class="hint">Out of ${pc.total} points. You can't change this after you submit.</div>
+    </div>
     <div class="row" style="margin-top:12px;justify-content:center;gap:10px;" id="capControls">
       <button class="btn btn-primary" style="width:auto;" onclick="capturePhoto()">📷 Take Picture</button>
     </div>`);
@@ -1529,18 +1486,38 @@
       const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
       document.getElementById('capPreview').src = dataUrl; document.getElementById('capPreview').style.display = 'block';
       video.style.display = 'none'; stopCamera();
+      document.getElementById('capScoreWrap').style.display = 'block';
       document.getElementById('capControls').innerHTML = `<button class="btn btn-outline" style="width:auto;" onclick="retakePhoto()">Retake</button><button class="btn btn-gold" style="width:auto;" onclick="submitCapture()">Submit</button>`;
       window._capturedImage = dataUrl;
     }
     function retakePhoto() { openCaptureModal(); }
     async function submitCapture() {
       const pc = ST.pendingCapture;
+      if (!pc || window._submittingCapture) return; // ignore double taps while uploading
+      const scoreEl = document.getElementById('capScore');
+      const raw = scoreEl ? scoreEl.value.trim() : '';
+      const score = Number(raw);
+      let scoreErr = '';
+      if (raw === '') scoreErr = 'Enter the score written on your paper.';
+      else if (!Number.isFinite(score)) scoreErr = 'The score must be a number.';
+      else if (score < 0) scoreErr = "The score can't be negative.";
+      else if (score > pc.total) scoreErr = `The score can't be higher than the maximum of ${pc.total}.`;
+      else if (!/^\d+(\.\d{1,2})?$/.test(raw)) scoreErr = 'The score can have at most 2 decimal places.';
+      if (scoreErr) { toast(scoreErr, 'err'); if (scoreEl) scoreEl.focus(); return; }
+      window._submittingCapture = true;
+      const controls = document.getElementById('capControls');
+      if (controls) controls.querySelectorAll('button').forEach(b => { b.disabled = true; if (b.textContent === 'Submit') b.textContent = 'Uploading…'; });
+      if (scoreEl) scoreEl.disabled = true;
       try {
-        await api(`/assessments/${pc.assessmentId}/submit`, { method: 'POST', body: JSON.stringify({ image: window._capturedImage }) });
-        toast('Submission uploaded for teacher verification.', 'ok');
+        await api(`/assessments/${pc.assessmentId}/submit`, { method: 'POST', body: JSON.stringify({ image: window._capturedImage, score: raw }) });
+        toast('Submitted. Your score is pending until your teacher reviews it.', 'ok');
         closeModal(); ST.pendingCapture = null;
         CACHE.myAssessments = await api('/my-assessments'); renderPage();
-      } catch (err) { apiErrorToast(err); }
+      } catch (err) {
+        apiErrorToast(err);
+        if (controls) controls.querySelectorAll('button').forEach(b => { b.disabled = false; if (b.textContent === 'Uploading…') b.textContent = 'Submit'; });
+        if (scoreEl) scoreEl.disabled = false;
+      } finally { window._submittingCapture = false; }
     }
 
     /* ============================= STUDENT: ATTENDANCE / ASSESSMENTS ============================= */
@@ -1560,18 +1537,20 @@
         return `<div class="card"><div class="row between"><h3 style="font-size:16px;">${esc(a.title)}</h3><span class="pill pill-neutral">${esc(a.type)}</span></div>
       <div style="font-size:13px;color:var(--ink-400);margin:4px 0 10px;">${a.due_date ? `Due ${a.due_date}` : ''}</div>
       <div style="margin-bottom:8px;">${studentScoreHtml(a)}</div>
-      ${sub ? `<span class="pill ${sub.verification === 'verified' ? 'pill-ok' : 'pill-warn'}">${sub.verification === 'verified' ? 'Checked by teacher' : 'Submitted — Pending Verification'}</span>
-        <div style="margin-top:10px;">${authImg(sub.image_url, a.title + ' — my submission', 'captured-img', 'max-height:140px;cursor:zoom-in;')}</div>` : `<div class="hint">${canSubmitPhoto(a) ? 'Take a picture of your paper to submit it.' : 'Not submitted.'}</div>`}
+      ${sub ? `<div style="margin-top:10px;">${authImg(sub.image_url, a.title + ' — my submission', 'captured-img', 'max-height:140px;cursor:zoom-in;')}</div>` : `<div class="hint">${canSubmitPhoto(a) ? 'Take a picture of your paper to submit it.' : 'Not submitted.'}</div>`}
       <div style="margin-top:10px;">${submitPhotoButton(a)}</div>
     </div>`;
       }).join('') : `<div class="empty" style="grid-column:1/-1;"><div class="big">📝</div>No assessments yet.</div>`}
   </div>`;
     }
 
-    /** A student's own score: hidden until the teacher releases it. */
+    /** A student's own result: the official score only once the teacher accepts it. */
     function studentScoreHtml(a) {
-      if (!a.score_released) return '<span class="pill pill-neutral">Score not yet released</span>';
-      return `<span class="pill pill-ok">Score: ${a.score ?? 0}${a.total_points ? ' / ' + a.total_points : ''}</span>`;
+      const total = a.total_points ? ' / ' + esc(a.total_points) : '';
+      if (a.status === 'accepted') return `<span class="pill pill-ok">Score: ${esc(a.score ?? 0)}${total}</span>`;
+      if (a.status === 'rejected') return '<span class="pill pill-danger">Not accepted - please see your teacher</span>';
+      if (a.submitted) return `<span class="pill pill-warn">Pending</span>${a.claimed_score != null ? ` <span style="font-size:12px;color:var(--ink-400);">Your score: ${esc(a.claimed_score)}${total}</span>` : ''}`;
+      return '<span class="pill pill-neutral">No score yet</span>';
     }
 
     /* ============================= NOTIFICATIONS / PROFILE / SETTINGS ============================= */
@@ -1587,60 +1566,17 @@
     <div class="avatar" style="width:64px;height:64px;font-size:22px;margin-bottom:14px;">${esc(u.name.split(' ').map(w => w[0]).slice(0, 2).join(''))}</div>
     <h2 style="margin-bottom:4px;">${esc(u.name)}</h2>
     <p style="color:var(--ink-400);margin-bottom:16px;">${u.role === 'student' ? 'Student' : 'Teacher'}${u.school_id ? ' · ' + esc(u.school_id) : ''}</p>
-    ${u.pending_email ? `<div class="msg msg-ok" style="margin-bottom:12px;">Waiting to confirm your new email <b>${esc(u.pending_email)}</b>. Your email stays ${esc(u.email)} until you enter the code. <button class="link-btn" onclick="openEmailCodeModal()">Enter code</button></div>` : ''}
     <table>${row('Email', u.email)}${row('ID Number', u.school_id)}
     ${u.role === 'student' ? row('Course', u.course) + row('Year', u.year_level) + row('Section', u.section) : row('Department', u.department)}
     </table>
     <button class="btn btn-outline btn-sm" style="margin-top:14px;" onclick="openEditProfileModal()">✎ Edit Profile</button></div>`;
     }
 
-    function openEmailCodeModal() {
-      const u = ST.user;
-      openModal(`<h3 style="margin-bottom:8px;">Confirm your new email</h3>
-  <p style="font-size:13.5px;color:var(--ink-700);line-height:1.6;margin-bottom:14px;">We sent a 6-digit code to <b>${esc(u.pending_email)}</b>. Your email stays <b>${esc(u.email)}</b> until you enter it. We also told ${esc(u.email)} about this request.</p>
-  <form onsubmit="return confirmEmailChange(event)">
-    <div class="field"><label>Verification Code</label><input id="emailCode" required inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" style="font-size:20px;letter-spacing:6px;text-align:center;"></div>
-    <button class="btn btn-primary" type="submit">Confirm New Email</button></form>
-  <div class="row" style="gap:12px;margin-top:12px;flex-wrap:wrap;">
-    <button class="link-btn" id="emailResendBtn" onclick="resendEmailChange()">Send a new code</button>
-    <button class="link-btn" onclick="cancelEmailChange()">Cancel the change</button></div>`);
-    }
-    async function confirmEmailChange(e) {
-      e.preventDefault();
-      const code = document.getElementById('emailCode').value.trim();
-      if (!/^\d{6}$/.test(code)) { toast('Enter the 6-digit code from your email.', 'err'); return false; }
-      try {
-        ST.user = await api('/profile/email/verify', { method: 'POST', body: JSON.stringify({ code }) });
-        closeModal(); render(); toast('Email changed.', 'ok');
-      } catch (err) { apiErrorToast(err); }
-      return false;
-    }
-    function profileBody(email) {
-      const u = ST.user;
-      const b = { name: u.name, email, school_id: u.school_id };
-      if (u.role === 'student') Object.assign(b, { course: u.course, year_level: u.year_level, section: u.section });
-      else b.department = u.department;
-      return b;
-    }
-    async function resendEmailChange() {
-      const btn = document.getElementById('emailResendBtn');
-      try {
-        ST.user = await api('/profile', { method: 'PUT', body: JSON.stringify(profileBody(ST.user.pending_email)) });
-        toast('If a minute has passed, a new code was sent.', 'ok');
-        cooldownButton(btn, 60, 'Send a new code');
-      } catch (err) { apiErrorToast(err); }
-    }
-    async function cancelEmailChange() {
-      try {
-        ST.user = await api('/profile', { method: 'PUT', body: JSON.stringify(profileBody(ST.user.email)) });
-        closeModal(); render(); toast('Email change cancelled.', 'ok');
-      } catch (err) { apiErrorToast(err); }
-    }
     function openEditProfileModal() {
       const u = ST.user;
       const f = (id, label, val, ph = '') => `<div class="field"><label>${label}</label><input id="${id}" value="${esc(val || '')}" placeholder="${ph}"></div>`;
       openModal(`<h3 style="margin-bottom:14px;">Edit Profile</h3>
-    ${f('pfName', 'Full Name', u.name)}${f('pfEmail', 'Email', u.pending_email || u.email)}<div class="hint" style="margin:-8px 0 12px;">Changing your email sends a code to the new address; it only changes after you enter it.</div>${f('pfSchoolId', 'ID Number', u.school_id)}
+    ${f('pfName', 'Full Name', u.name)}${f('pfEmail', 'Email', u.email)}${f('pfSchoolId', 'ID Number', u.school_id)}
     ${u.role === 'student'
           ? `<div class="field"><label>Course</label>${courseSelect('pfCourse', u.course)}${legacyHint(u.course, COURSES.map(c => c[0]))}</div>
         <div class="field"><label>Year Level</label>${yearSelect('pfYear', u.year_level)}${legacyHint(u.year_level, YEAR_LEVELS)}</div>
@@ -1660,11 +1596,8 @@
         if (!SECTIONS.includes(body.section)) { toast('Please choose your section (A, B, or C).', 'err'); return; }
       }
       try {
-        const before = ST.user.pending_email;
         ST.user = await api('/profile', { method: 'PUT', body: JSON.stringify(body) });
-        closeModal(); render();
-        if (ST.user.pending_email && ST.user.pending_email !== before) { toast('Profile saved. Check your new email for a code.', 'ok'); openEmailCodeModal(); }
-        else toast('Profile updated.', 'ok');
+        closeModal(); toast('Profile updated.', 'ok'); render();
       } catch (err) { apiErrorToast(err); }
     }
 
@@ -2172,15 +2105,15 @@
       } else if (ASSESS_TYPE[STU_TAB]) {
         const type = ASSESS_TYPE[STU_TAB];
         const rows = items.filter(a => (a.type || 'quiz') === type);
-        const released = rows.filter(a => a.score_released && a.score != null);
-        const pcts = released.filter(a => a.total_points).map(a => (a.score / a.total_points) * 100);
+        const accepted = rows.filter(a => a.status === 'accepted' && a.score != null);
+        const pcts = accepted.filter(a => a.total_points).map(a => (a.score / a.total_points) * 100);
         const avg = pcts.length ? Math.round(pcts.reduce((x, y) => x + y, 0) / pcts.length) + '%' : '—';
-        body = `<div class="grid grid-4" style="margin-bottom:16px;">${stat(rows.length, 'Total')}${stat(rows.filter(a => a.submitted).length, 'Submitted')}${stat(released.length, 'Released')}${stat(avg, 'Average')}</div>
+        body = `<div class="grid grid-4" style="margin-bottom:16px;">${stat(rows.length, 'Total')}${stat(rows.filter(a => a.submitted).length, 'Submitted')}${stat(accepted.length, 'Accepted')}${stat(avg, 'Average')}</div>
     <div class="table-wrap"><table><thead><tr><th>Title</th><th>Posted</th><th>Ends</th><th>Status</th><th>My Photo</th><th>My Score</th></tr></thead><tbody>
     ${rows.length ? rows.map(a => {
           const sub = a.my_submission;
           const photo = (sub
-            ? `${authImg(sub.image_url, a.title + ' — my submission')} <span class="pill ${a.is_verified ? 'pill-ok' : 'pill-warn'}" style="margin-left:6px;">${a.is_verified ? 'Checked' : 'Awaiting check'}</span>`
+            ? authImg(sub.image_url, a.title + ' — my submission')
             : '<span class="pill pill-neutral">Not submitted</span>') + (canSubmitPhoto(a) ? `<div style="margin-top:6px;">${submitPhotoButton(a)}</div>` : '');
           return `<tr><td>${esc(a.title)}</td><td>${fmtDateTime(a.created_at)}</td><td>${a.closes_at ? fmtDateTime(a.closes_at) : 'No limit'}</td><td>${assessmentStatus(a)}</td><td>${photo}</td><td>${studentScoreHtml(a)}</td></tr>`;
         }).join('') : `<tr><td colspan="6"><div class="empty">No ${ASSESS_PLURAL[type]} yet.</div></td></tr>`}
@@ -2337,7 +2270,8 @@
     let ASSESS_FILTER = { key: '', q: '', status: 'all', date: '' };
     let DETAIL_FILTER = { id: null, q: '', status: 'all' };
     const ASSESS_STATUSES = [['all', 'All'], ['open', 'Open'], ['scheduled', 'Scheduled'], ['closed', 'Closed']];
-    const DETAIL_CHIPS = [['everyone', 'All students'], ['submitted', 'Submitted'], ['pending', 'Awaiting check'], ['verified', 'Verified'], ['none', 'Not submitted']];
+    const DETAIL_CHIPS = [['everyone', 'All students'], ['submitted', 'Submitted'], ['pending', 'Pending'], ['accepted', 'Accepted'], ['rejected', 'Not Accepted'], ['none', 'Not submitted']];
+    const DECISION_PILLS = { pending: '<span class="pill pill-warn">Pending</span>', accepted: '<span class="pill pill-ok">Accepted</span>', rejected: '<span class="pill pill-danger">Not Accepted</span>' };
     function assessmentStatusKey(a) {
       const now = Date.now();
       if (a.opens_at && new Date(a.opens_at).getTime() > now) return 'scheduled';
@@ -2418,13 +2352,13 @@
     /* --- detail page: who scanned / who submitted --- */
     function detailStatusKey(s) {
       if (!s) return 'none';
-      if (!s.has_image && !s.image_url) return s.is_verified ? 'scored' : 'none';
-      return s.is_verified ? 'verified' : 'pending';
+      if (!s.has_image && !s.image_url) return s.status === 'accepted' ? 'scored' : 'none';
+      return DECISION_PILLS[s.status] ? s.status : 'pending';
     }
     function detailMatch(key, f) {
       if (f === 'everyone') return true;
       if (f === 'none') return key === 'none' || key === 'scored';
-      if (f === 'submitted') return key === 'pending' || key === 'verified';
+      if (f === 'submitted') return key === 'pending' || key === 'accepted' || key === 'rejected';
       return key === f;
     }
     function detailData(cd) {
@@ -2447,11 +2381,13 @@
         const submitted = img ? fmtDateTime(s.submitted_at) : '—';
         const photo = img ? authImg(img, `${en.student.name} — ${a.title}`) : '—';
         const status = key === 'none' ? '<span class="pill pill-neutral">Not submitted</span>'
-            : key === 'scored' ? '<span class="pill pill-ok">Scored · no photo</span>'
-              : key === 'pending' ? '<span class="pill pill-warn">Awaiting check</span>' : '<span class="pill pill-ok">Verified</span>';
+            : key === 'scored' ? '<span class="pill pill-ok">Scored · no photo</span>' : DECISION_PILLS[key];
         const sid = en.student.id;
-        const score = `<div class="row" style="gap:6px;flex-wrap:nowrap;"><input class="score-input" id="sc_${sid}" value="${s ? s.score ?? 0 : 0}" placeholder="0/${a.total_points}" title="Type a score such as 20 or 20/${a.total_points}" onkeydown="if(event.key==='Enter')saveStudentScore('${a.id}','${sid}')"><span style="font-size:12px;color:var(--ink-400);">/ ${a.total_points}</span><button class="btn btn-primary btn-sm" style="width:auto;" onclick="saveStudentScore('${a.id}','${sid}')">Save</button></div>`;
-        return `<tr><td>${esc(en.student.name)}</td><td>${esc(en.student.school_id || '—')}</td><td>${submitted}</td><td>${photo}</td><td>${status}</td><td>${score}</td></tr>`;
+        const entered = img ? (s.claimed_score != null ? `${esc(s.claimed_score)} / ${esc(a.total_points)}` : '<span style="font-size:12px;color:var(--ink-400);">Not entered</span>') : '—';
+        // Submitted: decide on the student's score. Not submitted: the teacher can still type a score.
+        const action = img ? decisionButtons(s, a.id)
+          : `<div class="row" style="gap:6px;flex-wrap:nowrap;"><input class="score-input" id="sc_${sid}" value="${s ? s.score ?? 0 : 0}" placeholder="0/${a.total_points}" title="Type a score such as 20 or 20/${a.total_points}" onkeydown="if(event.key==='Enter')saveStudentScore('${a.id}','${sid}')"><span style="font-size:12px;color:var(--ink-400);">/ ${a.total_points}</span><button class="btn btn-primary btn-sm" style="width:auto;" onclick="saveStudentScore('${a.id}','${sid}')">Save</button></div>`;
+        return `<tr><td>${esc(en.student.name)}</td><td>${esc(en.student.school_id || '—')}</td><td>${submitted}</td><td>${photo}</td><td>${entered}</td><td>${status}</td><td>${action}</td></tr>`;
       }).join('');
     }
     function detailChipsHtml() {
@@ -2473,7 +2409,7 @@
       const subs = ASSESS_SUBS || [];
       const { roster, byStudent } = detailData(cd);
       const submittedList = subs.filter(s => s.answer || s.image_url);
-      const graded = subs.filter(s => s.is_verified && s.score != null);
+      const graded = subs.filter(s => s.status === 'accepted' && s.score != null);
       let avg = '—';
       if (graded.length) {
         avg = a.total_points
@@ -2487,16 +2423,31 @@
   <div class="row between wrap" style="margin-bottom:6px;gap:10px;"><h2>${esc(a.title)}</h2>${assessmentStatus(a)}</div>
   <div style="font-size:13.5px;color:var(--ink-400);margin-bottom:12px;line-height:1.7;">${label} · Posted ${fmtDateTime(a.created_at)}${a.opens_at ? ' · Opens ' + fmtDateTime(a.opens_at) : ''} · Ends ${a.closes_at ? fmtDateTime(a.closes_at) : 'No limit'}${a.total_points ? ' · ' + a.total_points + ' points' : ''}</div>
   <div class="row" style="gap:8px;margin-bottom:16px;flex-wrap:wrap;">
-    <button class="btn btn-outline btn-sm" onclick="openEditAssessment('${a.id}')">✎ Edit</button>
-    ${releaseButton(a)}</div>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px;">${stat(roster.length, 'Enrolled')}${stat(submittedList.length, 'Submitted')}${stat(graded.length, 'Graded')}${stat(avg, 'Average')}</div>
+    <button class="btn btn-outline btn-sm" onclick="openEditAssessment('${a.id}')">✎ Edit</button></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px;">${stat(roster.length, 'Enrolled')}${stat(submittedList.length, 'Submitted')}${stat(graded.length, 'Accepted')}${stat(avg, 'Average')}</div>
   <div class="row wrap" style="gap:8px;margin-bottom:14px;align-items:center;">
     <input id="dtSearch" type="search" placeholder="Search student name or ID" value="${esc(DETAIL_FILTER.q)}" oninput="filterDetail()" style="padding:8px 12px;border:1.5px solid #DDEAE8;border-radius:10px;min-width:210px;">
     <div class="row wrap" id="detailChips" style="gap:6px;">${detailChipsHtml()}</div>
   </div>
-  <div class="table-wrap"><table><thead><tr><th>Student</th><th>Student ID</th><th>Submitted</th><th>Photo</th><th>Status</th><th>Score</th></tr></thead>
+  <div class="table-wrap"><table><thead><tr><th>Student</th><th>Student ID</th><th>Submitted</th><th>Photo</th><th>Student's Score</th><th>Status</th><th>Action</th></tr></thead>
   <tbody id="detailRows">${detailRowsHtml(a, roster, byStudent)}</tbody></table></div>
-  <div class="hint" style="margin-top:10px;">Scores start at 0. Type a score like <b>20</b> or <b>20/${a.total_points}</b> and press Save; the subject's Report Card updates automatically. ${a.scores_released ? 'Students can see their released scores.' : 'Students will see "Score not yet released" until you release the scores.'}</div>`;
+  <div class="hint" style="margin-top:10px;">Click a photo to enlarge it and compare it with the score the student entered, then choose <b>Accept</b> or <b>Not Accepted</b>. Accepted scores become official and count in the Report Card and Scores CSV; you can change a decision at any time. For students without a photo, type a score like <b>20</b> or <b>20/${a.total_points}</b> and press Save.</div>`;
+    }
+
+    function decisionButtons(s, assessmentId) {
+      const st = s.status || 'pending';
+      return `<div class="row" style="gap:6px;flex-wrap:nowrap;">
+        <button class="btn ${st === 'accepted' ? 'btn-primary' : 'btn-outline'} btn-sm" style="width:auto;" onclick="decideSubmission('${s.id}','accepted','${assessmentId}')">Accept</button>
+        <button class="btn ${st === 'rejected' ? 'btn-primary' : 'btn-outline'} btn-sm" style="width:auto;" onclick="decideSubmission('${s.id}','rejected','${assessmentId}')">Not Accepted</button></div>`;
+    }
+    async function decideSubmission(subId, status, assessmentId) {
+      try {
+        await api(`/submissions/${subId}/decision`, { method: 'POST', body: JSON.stringify({ status }) });
+        toast(status === 'accepted' ? 'Score accepted.' : 'Marked as not accepted.', 'ok');
+        if (REPORT.classId) REPORT.data = null;
+        if (String(ASSESS_OPEN) === String(assessmentId)) { ASSESS_SUBS = await api(`/assessments/${assessmentId}/submissions`); renderPage(); }
+        if (document.getElementById('reviewList')) viewSubmissions(assessmentId);
+      } catch (err) { apiErrorToast(err); }
     }
 
     async function saveStudentScore(assessmentId, studentId) {
@@ -2509,19 +2460,6 @@
         if (ASSESS_OPEN) ASSESS_SUBS = await api(`/assessments/${ASSESS_OPEN}/submissions`);
         if (REPORT.classId) REPORT.data = null;
         renderPage();
-      } catch (err) { apiErrorToast(err); }
-    }
-
-    function releaseButton(a) {
-      return a.scores_released
-        ? `<span class="pill pill-ok">Scores released</span><button class="btn btn-outline btn-sm" onclick="setRelease('${a.id}', false)">Hide scores</button>`
-        : `<span class="pill pill-warn">Scores hidden from students</span><button class="btn btn-gold btn-sm" onclick="setRelease('${a.id}', true)">Release scores</button>`;
-    }
-    async function setRelease(id, released) {
-      try {
-        await api(`/assessments/${id}/release`, { method: 'POST', body: JSON.stringify({ released }) });
-        toast(released ? 'Scores released to students.' : 'Scores hidden from students.', 'ok');
-        await loadClassDetail(ST.activeClassId);
       } catch (err) { apiErrorToast(err); }
     }
 
@@ -2632,32 +2570,24 @@
         const submissionHtml = subs.length
           ? subs.map(s => {
             const name = (s.student && s.student.name) || 'Unknown student';
-            const verification = s.verification || 'pending';
-            const pillClass = verification === 'verified' ? 'pill-ok' : 'pill-warn';
+            const total = a ? esc(a.total_points) : '';
             return `
                   <div class="card" style="box-shadow:none;border:1.5px solid #EAF2F0;margin-bottom:10px;padding:12px;">
-                    <div class="row between"><strong>${esc(name)}</strong><span class="pill ${pillClass}">${esc(verification)}</span></div>
+                    <div class="row between"><strong>${esc(name)}</strong>${DECISION_PILLS[s.status] || DECISION_PILLS.pending}</div>
                     <div style="margin-top:8px;">${authImg(s.image_url, name + ' — ' + (a ? a.title : ''), 'captured-img', 'max-height:180px;cursor:zoom-in;')}</div>
-                    <div class="row" style="gap:8px;margin-top:8px;align-items:center;">
-                      <input class="score-input" placeholder="0/${a ? a.total_points : ''}" id="score_${s.id}" value="${s.score ?? 0}"><span style="font-size:12px;color:var(--ink-400);">/ ${a ? a.total_points : ''}</span>
-                      <button class="btn btn-primary btn-sm" style="width:auto;" onclick="verifySubmission('${s.id}','${assessmentId}')">Save &amp; Verify</button>
+                    <div class="row" style="gap:8px;margin-top:8px;align-items:center;flex-wrap:wrap;">
+                      <span style="font-size:13px;">Student's score: <b>${s.claimed_score != null ? esc(s.claimed_score) : '—'}</b> / ${total}</span>
+                      ${decisionButtons(s, assessmentId)}
                     </div>
                   </div>`;
           }).join('')
           : '<div class="empty">No submissions yet.</div>';
 
-        openModal(`<h3 style="margin-bottom:4px;">${esc(a ? a.title : '')} — Submissions</h3><p style="color:var(--ink-400);font-size:13px;margin-bottom:12px;">${subs.length} submission(s)</p>${submissionHtml}`);
-      } catch (err) { apiErrorToast(err); }
-    }
-    async function verifySubmission(subId, assessmentId) {
-      const score = document.getElementById('score_' + subId).value;
-      try {
-        await api(`/submissions/${subId}/verify`, { method: 'POST', body: JSON.stringify({ score: score.trim() === '' ? null : score.trim() }) });
-        toast('Submission verified.', 'ok'); viewSubmissions(assessmentId);
+        openModal(`<h3 style="margin-bottom:4px;">${esc(a ? a.title : '')} — Submissions</h3><p style="color:var(--ink-400);font-size:13px;margin-bottom:12px;">${subs.length} submission(s)</p><div id="reviewList">${submissionHtml}</div>`);
       } catch (err) { apiErrorToast(err); }
     }
 
-    /* ============================= SUBJECT REPORT CARD (teacher: all students; student: own, released only) ============================= */
+    /* ============================= SUBJECT REPORT CARD (teacher: all students; student: own, accepted only) ============================= */
     let REPORT = { classId: null, data: null, loading: false, failed: false };
     async function loadReportCard(classId) {
       REPORT = { classId, data: null, loading: true, failed: false }; renderPage();
@@ -2682,13 +2612,15 @@
       const held = d.sessions_held || 0;
       const attCols = [['present', 'Present'], ['late', 'Late'], ['excused', 'Excused'], ['absent', 'Absent']];
       const head1 = `<tr><th rowspan="2">Student</th><th rowspan="2">Student ID</th><th colspan="${attCols.length + 1}" class="att-head">Attendance · ${held} session${held === 1 ? '' : 's'}</th>${groups.map(g => `<th colspan="${g.items.length + 1}">${g.l}</th>`).join('')}<th rowspan="2">Total</th><th rowspan="2">%</th></tr>`;
-      const head2 = `<tr>${attCols.map(([, l]) => `<th class="att">${l}</th>`).join('')}<th class="att sub" title="Present + Late, out of sessions held">Rate</th>${groups.map(g => g.items.map(a => `<th title="${esc(a.title)}">${esc(a.title.length > 18 ? a.title.slice(0, 17) + '…' : a.title)}<div style="font-size:11px;font-weight:500;color:var(--ink-400);">/ ${a.total_points}${isTeacher && !a.released ? ' · hidden' : ''}</div></th>`).join('') + `<th class="sub">Subtotal</th>`).join('')}</tr>`;
+      const head2 = `<tr>${attCols.map(([, l]) => `<th class="att">${l}</th>`).join('')}<th class="att sub" title="Present + Late, out of sessions held">Rate</th>${groups.map(g => g.items.map(a => `<th title="${esc(a.title)}">${esc(a.title.length > 18 ? a.title.slice(0, 17) + '…' : a.title)}<div style="font-size:11px;font-weight:500;color:var(--ink-400);">/ ${a.total_points}</div></th>`).join('') + `<th class="sub">Subtotal</th>`).join('')}</tr>`;
       const rows = d.students.map(st => {
         const cells = groups.map(g => g.items.map(a => {
           const sc = st.scores[a.id] || {};
           const photo = sc.submitted && sc.submission_id ? ` <span title="View photo" style="cursor:zoom-in;" onclick="event.stopPropagation();openImageViewer('/api/submissions/${sc.submission_id}/image', '${esc(String(st.name).replace(/'/g, ''))} — ${esc(String(a.title).replace(/'/g, ''))}')">📷</span>` : '';
-          if (isTeacher) return `<td class="editable" title="Click to edit score" onclick="editReportScore('${a.id}','${st.student_id}')">${sc.score ?? 0}${photo}</td>`;
-          return `<td>${sc.score == null ? '<span style="font-size:12px;color:var(--ink-400);">Not yet released</span>' : sc.score}${photo}</td>`;
+          const shown = sc.score != null ? esc(sc.score)
+            : `<span style="font-size:12px;color:var(--ink-400);">${sc.status === 'rejected' ? 'Not Accepted' : sc.status === 'pending' ? 'Pending' : '—'}</span>`;
+          if (isTeacher) return `<td class="editable" title="Click to edit score" onclick="editReportScore('${a.id}','${st.student_id}')">${shown}${photo}</td>`;
+          return `<td>${shown}${photo}</td>`;
         }).join('') + `<td class="sub">${frac(st.totals[g.t])}</td>`).join('');
         const pct = st.totals.overall.percent;
         const at = st.attendance || {};
@@ -2701,7 +2633,7 @@
 
       return `<div class="row between wrap" style="gap:10px;margin-bottom:12px;"><div>
       <h3>${esc(d.class.name)} — Report Card</h3>
-      <div style="font-size:13px;color:var(--ink-400);margin-top:4px;">${isTeacher ? `${d.students.length} enrolled student(s) · ${d.assessments.length} assessment(s). Attendance counts one per session held (no Time In = absent). Scores come straight from the quizzes, exams and activities; click a score to edit it.` : 'Attendance counts one per class session. Only scores your teacher has released are shown and counted in your totals.'}</div></div>
+      <div style="font-size:13px;color:var(--ink-400);margin-top:4px;">${isTeacher ? `${d.students.length} enrolled student(s) · ${d.assessments.length} assessment(s). Attendance counts one per session held (no Time In = absent). Scores come straight from the quizzes, exams and activities; click a score to edit it.` : 'Attendance counts one per class session. Only scores your teacher has accepted are shown and counted in your totals.'}</div></div>
       <button class="btn btn-outline btn-sm" onclick="loadReportCard('${c.id}')">↻ Refresh</button></div>
   <div class="table-wrap"><table class="report"><thead>${head1}${head2}</thead><tbody>
   ${rows || `<tr><td colspan="${colspan}"><div class="empty">${isTeacher ? 'No enrolled students yet.' : 'No report yet.'}</div></td></tr>`}

@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Mail\SecurityAlertMail;
-use App\Mail\VerificationCodeMail;
 use App\Models\User;
 use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Mail;
@@ -24,101 +23,60 @@ class EmailSecurityTest extends TestCase
         Mail::fake();
     }
 
-    private function lastCode(string $to): string
-    {
-        $code = null;
-        Mail::assertSent(VerificationCodeMail::class, function ($m) use ($to, &$code) {
-            if ($m->hasTo($to)) {
-                $code = $m->code;
-            }
-
-            return true;
-        });
-
-        return $code;
-    }
-
-    private function register(string $email): \Illuminate\Testing\TestResponse
-    {
-        return $this->postJson('/api/register', [
-            'name' => 'Eve Santos', 'email' => $email, 'password' => 'Secret#123', 'role' => 'student',
-            'school_id' => 'E-' . uniqid(), 'course' => 'BSIT', 'year_level' => '1st Year', 'section' => 'A',
-        ]);
-    }
-
-    public function test_new_account_must_verify_email_before_signing_in(): void
+    public function test_new_account_can_sign_in_right_away_and_gets_sign_in_alerts(): void
     {
         $email = 'eve' . uniqid() . '@mqcqc.ph.education';
+        $reg = fn ($e) => $this->postJson('/api/register', [
+            'name' => 'Eve Santos', 'email' => $e, 'password' => 'Secret#123', 'role' => 'student',
+            'school_id' => 'E-' . uniqid(), 'course' => 'BSIT', 'year_level' => '1st Year', 'section' => 'A',
+        ]);
 
-        $this->register('not an email')->assertStatus(422);
-        $this->register('eve@gmail.com')->assertStatus(422)->assertJsonPath('errors.email.0', 'Please use your school email (@mqcqc.ph.education).');
+        $reg('not an email')->assertStatus(422);
+        $reg('eve@gmail.com')->assertStatus(422)->assertJsonPath('errors.email.0', 'Please use your school email (@mqcqc.ph.education).');
 
-        $res = $this->register($email)->assertCreated()->assertJsonPath('verification_required', true)->json();
-        $this->assertArrayNotHasKey('token', $res);
-        $code = $this->lastCode($email);
-        $this->assertMatchesRegularExpression('/^\d{6}$/', $code);
-        $this->assertNotSame($code, User::where('email', $email)->value('verification_code')); // stored hashed
+        // No code step: registering returns a working login
+        $res = $reg($email)->assertCreated()->json();
+        $this->assertNotEmpty($res['token']);
+        $this->assertSame($email, $res['user']['email']);
 
-        // Can't sign in yet
-        $this->postJson('/api/login', ['email' => $email, 'password' => 'Secret#123'])
-            ->assertStatus(403)->assertJsonPath('verification_required', true);
-
-        // Wrong code counts down; right code activates and signs in
-        $wrong = $code === '000000' ? '111111' : '000000';
-        $this->postJson('/api/email/verify', ['email' => $email, 'code' => $wrong])->assertStatus(422)->assertJsonPath('message', 'That code is incorrect. 4 tries left.');
-        $ok = $this->postJson('/api/email/verify', ['email' => $email, 'code' => $code])->assertOk()->json();
-        $this->assertNotEmpty($ok['token']);
-        $this->assertArrayNotHasKey('verification_code', $ok['user']);
-        $this->assertNotNull(User::where('email', $email)->value('email_verified_at'));
-
-        // The code can't be reused, and signing in now works and sends a sign-in alert
-        $this->postJson('/api/email/verify', ['email' => $email, 'code' => $code])->assertStatus(409);
-        $this->postJson('/api/login', ['email' => $email, 'password' => 'Secret#123'])->assertOk();
+        $this->postJson('/api/login', ['email' => $email, 'password' => 'Secret#123'])->assertOk()->assertJsonStructure(['token', 'user']);
         Mail::assertSent(SecurityAlertMail::class, fn ($m) => $m->hasTo($email) && $m->title === 'New sign-in to your account');
+
+        // The old code endpoints are gone
+        $this->postJson('/api/email/verify', ['email' => $email, 'code' => '123456'])->assertNotFound();
+        $this->postJson('/api/email/resend', ['email' => $email])->assertNotFound();
     }
 
-    public function test_codes_expire_and_lock_after_too_many_tries(): void
-    {
-        $email = 'lock' . uniqid() . '@mqcqc.ph.education';
-        $this->register($email)->assertCreated();
-        $code = $this->lastCode($email);
-        $wrong = $code === '000000' ? '111111' : '000000';
-
-        for ($i = 0; $i < 5; $i++) {
-            $this->postJson('/api/email/verify', ['email' => $email, 'code' => $wrong]);
-        }
-        $this->postJson('/api/email/verify', ['email' => $email, 'code' => $code])
-            ->assertStatus(422)->assertJsonPath('message', 'Too many wrong codes. Tap "Send a new code".');
-
-        // Resend is allowed after the cooldown; the new code works
-        $this->travel(61)->seconds();
-        $this->postJson('/api/email/resend', ['email' => $email])->assertOk();
-        $fresh = $this->lastCode($email);
-        $this->travel(16)->minutes();
-        $this->postJson('/api/email/verify', ['email' => $email, 'code' => $fresh])->assertStatus(422)->assertJsonPath('message', 'This code has expired. Tap "Send a new code".');
-        $this->travel(-16)->minutes();
-    }
-
-    public function test_email_change_needs_the_new_mailbox_and_alerts_the_old_one(): void
+    public function test_email_change_applies_at_once_and_alerts_the_old_address(): void
     {
         $user = User::create(['name' => 'Fe Cruz', 'email' => 'fe' . uniqid() . '@mqcqc.ph.education', 'password' => 'Secret#123',
             'role' => 'teacher', 'school_id' => 'F-' . uniqid()]);
-        $user->forceFill(['email_verified_at' => now()])->save();
         $old = $user->email;
         $new = 'fe.new' . uniqid() . '@mqcqc.ph.education';
         Sanctum::actingAs($user);
 
         $res = $this->putJson('/api/profile', ['name' => 'Fe Cruz', 'email' => $new])->assertOk()->json();
-        $this->assertSame($old, $res['email']);          // unchanged until confirmed
-        $this->assertSame($new, $res['pending_email']);
-        Mail::assertSent(SecurityAlertMail::class, fn ($m) => $m->hasTo($old) && $m->title === 'Email change requested');
-
-        $this->postJson('/api/profile/email/verify', ['code' => '12345'])->assertStatus(422);
-        $this->postJson('/api/profile/email/verify', ['code' => $this->lastCode($new)])->assertOk()->assertJsonPath('email', $new)->assertJsonPath('pending_email', null);
+        $this->assertSame($new, $res['email']);
+        $this->assertArrayNotHasKey('pending_email', $res);
         Mail::assertSent(SecurityAlertMail::class, fn ($m) => $m->hasTo($old) && $m->title === 'Your email was changed');
 
-        // Password change alert
+        // Saving without changing the email sends no alert
+        Mail::fake();
+        $this->putJson('/api/profile', ['name' => 'Fe C.', 'email' => $new])->assertOk();
+        Mail::assertNothingSent();
+
         $this->postJson('/api/change-password', ['current_password' => 'Secret#123', 'new_password' => 'Another#456'])->assertOk();
         Mail::assertSent(SecurityAlertMail::class, fn ($m) => $m->hasTo($new) && $m->title === 'Your password was changed');
+    }
+
+    public function test_sign_in_still_works_when_the_alert_email_cannot_be_sent(): void
+    {
+        config(['mail.default' => 'smtp', 'mail.mailers.smtp.host' => '127.0.0.1', 'mail.mailers.smtp.port' => 1]);
+        $this->app->forgetInstance('mail.manager');
+        \Illuminate\Support\Facades\Mail::clearResolvedInstances();
+
+        $user = User::create(['name' => 'Gil', 'email' => 'gil' . uniqid() . '@mqcqc.ph.education', 'password' => 'Secret#123',
+            'role' => 'student', 'school_id' => 'G-' . uniqid(), 'course' => 'BSIT', 'year_level' => '2nd Year', 'section' => 'B']);
+        $this->postJson('/api/login', ['email' => $user->email, 'password' => 'Secret#123'])->assertOk();
     }
 }

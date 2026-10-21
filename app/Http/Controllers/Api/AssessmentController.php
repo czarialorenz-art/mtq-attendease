@@ -12,6 +12,7 @@ use App\Models\UserNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class AssessmentController extends Controller
 {
@@ -84,7 +85,7 @@ class AssessmentController extends Controller
         'total_points' => 'nullable|integer|min:1|max:' . self::MAX_POINTS,
     ], self::POINTS_MESSAGES);
 
-    $maxGiven = (int) $assessment->submissions()->max('score');
+    $maxGiven = (float) $assessment->submissions()->max('score');
     if (! empty($data['total_points']) && $data['total_points'] < $maxGiven) {
         return response()->json(['message' => "Maximum points can't be lower than an existing score ({$maxGiven})."], 422);
     }
@@ -139,9 +140,17 @@ private function windowError(Assessment $a): ?string
             return response()->json(['message' => $message], 403);
         }
 
+        $max = min((float) $assessment->total_points, 999999.99); // claimed_score is decimal(8,2)
         $data = $request->validate([
             'image' => 'required|string',
             'answer' => 'nullable|string',
+            'score' => 'required|numeric|decimal:0,2|min:0|max:' . $max,
+        ], [
+            'score.required' => 'Enter the score written on your paper.',
+            'score.numeric' => 'The score must be a number.',
+            'score.decimal' => 'The score can have at most 2 decimal places.',
+            'score.min' => "The score can't be negative.",
+            'score.max' => "The score can't be higher than the maximum of {$assessment->total_points}.",
         ]);
 
         if (! preg_match('#^data:image/(jpeg|png|webp);base64,#', $data['image'], $m)) {
@@ -154,8 +163,9 @@ private function windowError(Assessment $a): ?string
         }
 
         $existing = Submission::where('assessment_id', $assessment->id)->where('student_id', $user->id)->first();
-        if ($existing?->is_verified) {
-            return response()->json(['message' => 'Already verified by your teacher.'], 409);
+        // One submission per student: the score they entered can't be changed afterwards
+        if ($existing && ($existing->hasImage() || $existing->status !== Submission::PENDING)) {
+            return response()->json(['message' => 'You already submitted this. Your score can no longer be changed.'], 409);
         }
 
         if (@getimagesizefromstring($binary) === false) {
@@ -163,18 +173,21 @@ private function windowError(Assessment $a): ?string
         }
 
         // Private disk: photos are only served through the authenticated image endpoint
-        $path = 'submissions/' . $assessment->id . '/' . $user->id . '-' . time() . '.' . ($m[1] === 'jpeg' ? 'jpg' : $m[1]);
+        // Random part so two uploads in the same second (double tap, retry) never share a file name
+        $path = 'submissions/' . $assessment->id . '/' . $user->id . '-' . time() . '-' . Str::lower(Str::random(8))
+            . '.' . ($m[1] === 'jpeg' ? 'jpg' : $m[1]);
         if (! Storage::disk('local')->put($path, $binary)) {
             return response()->json(['message' => 'Could not save the photo. Please try again.'], 500);
         }
 
-        if ($existing) {
+        // Remove the previous photo, but never the one just saved
+        if ($existing && $existing->answer !== $path) {
             $this->deleteImage($existing->answer);
         }
 
         $submission = Submission::updateOrCreate(
             ['assessment_id' => $assessment->id, 'student_id' => $user->id],
-            ['answer' => $path, 'submitted_at' => now()]
+            ['answer' => $path, 'submitted_at' => now(), 'claimed_score' => $data['score'], 'status' => Submission::PENDING]
         );
 
         UserNotification::create([
@@ -188,6 +201,8 @@ private function windowError(Assessment $a): ?string
             'assessment_id' => $submission->assessment_id,
             'submitted_at' => $submission->submitted_at,
             'image_url' => $submission->imageUrl(),
+            'claimed_score' => $submission->claimed_score,
+            'status' => $submission->status,
         ], 201);
     }
 
@@ -208,6 +223,8 @@ private function windowError(Assessment $a): ?string
                 'has_image' => $s->hasImage(),
                 'verification' => $s->is_verified ? 'verified' : 'pending',
                 'score' => $s->score,
+                'claimed_score' => $s->claimed_score,
+                'status' => $s->status,
                 'is_verified' => $s->is_verified,
                 'submitted_at' => $s->submitted_at,
             ]);
@@ -231,17 +248,55 @@ private function windowError(Assessment $a): ?string
 
         $submission->update([
             'score' => $score,
+            'status' => Submission::ACCEPTED,
             'is_verified' => true,
             'verified_at' => now(),
         ]);
 
         UserNotification::create([
             'user_id' => $submission->student_id,
-            'title' => 'Submission verified',
-            'message' => "Your submission for {$submission->assessment->title} was verified.",
+            'title' => 'Score accepted',
+            'message' => "Your score for {$submission->assessment->title} was accepted.",
         ]);
 
-        return response()->json(['message' => 'Submission verified.', 'submission' => $submission->fresh()]);
+        return response()->json(['message' => 'Score accepted.', 'submission' => $submission->fresh()]);
+    }
+
+    /** Teacher accepts the score the student entered (it becomes the official score) or marks it not accepted. */
+    public function decision(Request $request, Submission $submission)
+    {
+        abort_unless($submission->assessment->classroom->teacher_id === $request->user()->id, 403, 'Not your class.');
+
+        $data = $request->validate(['status' => 'required|in:accepted,rejected'],
+            ['status.required' => 'Choose Accept or Not Accepted.', 'status.in' => 'Choose Accept or Not Accepted.']);
+        $accepted = $data['status'] === Submission::ACCEPTED;
+
+        $submission->update([
+            // Older submissions have no entered score; accepting keeps the score already recorded
+            'score' => $accepted ? ($submission->claimed_score ?? $submission->score) : 0,
+            'status' => $data['status'],
+            'is_verified' => $accepted,
+            'verified_at' => $accepted ? now() : null,
+        ]);
+
+        if ($submission->wasChanged('status')) {
+            $title = $submission->assessment->title;
+            UserNotification::create([
+                'user_id' => $submission->student_id,
+                'title' => $accepted ? 'Score accepted' : 'Score not accepted',
+                'message' => $accepted ? "Your score for {$title} was accepted."
+                    : "Your score for {$title} was not accepted. Please see your teacher.",
+            ]);
+        }
+
+        $submission->refresh();
+
+        return response()->json([
+            'id' => $submission->id,
+            'status' => $submission->status,
+            'score' => $submission->score,
+            'claimed_score' => $submission->claimed_score,
+        ]);
     }
 
     public function myAssessments(Request $request)
@@ -258,6 +313,8 @@ private function windowError(Assessment $a): ?string
                 'due_date' => $a->closes_at?->timezone('Asia/Manila')->format('M j, Y g:i A'),
                 'my_submission' => $sub && $sub->hasImage() ? [
                     'verification' => $sub->is_verified ? 'verified' : 'pending',
+                    'status' => $sub->status,
+                    'claimed_score' => $sub->claimed_score,
                     'score' => $result['score'],
                     'image_url' => $sub->imageUrl(),
                 ] : null,
@@ -279,7 +336,7 @@ private function windowError(Assessment $a): ?string
         }
 
         $submission = Submission::firstOrNew(['assessment_id' => $assessment->id, 'student_id' => $student->id]);
-        $submission->fill(['score' => $score, 'is_verified' => true, 'verified_at' => now()]);
+        $submission->fill(['score' => $score, 'status' => Submission::ACCEPTED, 'is_verified' => true, 'verified_at' => now()]);
         $submission->save();
 
         return response()->json([
@@ -289,29 +346,6 @@ private function windowError(Assessment $a): ?string
             'score' => $submission->score,
             'total_points' => $assessment->total_points,
         ]);
-    }
-
-    /** Teacher releases (or hides again) the scores of an assessment to students. */
-    public function release(Request $request, Assessment $assessment)
-    {
-        $this->authorizeTeacher($request, $assessment);
-
-        $released = $request->boolean('released', true);
-        $assessment->update(['scores_released_at' => $released ? ($assessment->scores_released_at ?? now()) : null]);
-
-        if ($released && $assessment->wasChanged('scores_released_at')) {
-            $studentIds = Enrollment::where('classroom_id', $assessment->classroom_id)
-                ->where('status', 'approved')->pluck('student_id');
-            foreach ($studentIds as $id) {
-                UserNotification::create([
-                    'user_id' => $id,
-                    'title' => 'Scores released',
-                    'message' => "Scores for {$assessment->title} are now available.",
-                ]);
-            }
-        }
-
-        return response()->json($this->format($assessment->fresh(), true));
     }
 
     /** Streams a submission photo to the class teacher or the student who submitted it. */
@@ -364,16 +398,15 @@ private function windowError(Assessment $a): ?string
         return [(int) $m[1], null];
     }
 
-    /** What a student may see about their own result: the score only once the teacher releases it. */
+    /** What a student may see about their own result: the official score only once the teacher accepts it. */
     private function studentResult(Assessment $a, ?Submission $sub): array
     {
-        $released = $a->scoresReleased();
-
         return [
             'submitted' => (bool) $sub?->hasImage(),
             'is_verified' => $sub?->is_verified ?? false,
-            'score_released' => $released,
-            'score' => $released ? ($sub?->score ?? 0) : null,
+            'status' => $sub?->status,
+            'claimed_score' => $sub?->claimed_score,
+            'score' => $sub?->isAccepted() ? $sub->score : null,
         ];
     }
 
@@ -428,8 +461,6 @@ private function windowError(Assessment $a): ?string
             'opens_at' => $a->opens_at,
             'closes_at' => $a->closes_at,
             'submissions_count' => $a->submissions_count ?? null,
-            'scores_released' => $a->scoresReleased(),
-            'scores_released_at' => $a->scores_released_at,
         ];
 
         return $data;

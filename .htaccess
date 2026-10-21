@@ -1,0 +1,40 @@
+# MTQ-ATTENDEASE — goes in htdocs/ (the project root, next to artisan) on InfinityFree.
+# public/.htaccess stays as it is. "php artisan serve" ignores this file, so local development is unaffected.
+
+Options -Indexes
+
+# Never serve dotfiles (.env, .git, .htaccess ...)
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # 1. Always use https (phone cameras for Scan QR only work on https pages).
+    #    InfinityFree's SSL may sit in front of Apache, so also check the forwarded protocol.
+    RewriteCond %{HTTPS} off
+    RewriteCond %{HTTP:X-Forwarded-Proto} !https
+    RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+    # 2. Pass the login token header through to Laravel (Sanctum bearer tokens)
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
+    # 3. Block private folders and project files outside public/
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|storage|tests|vendor|node_modules|deploy)(/|$) - [F,L]
+    RewriteRule ^(artisan|composer\.(json|lock)|package(-lock)?\.json|phpunit\.xml|vite\.config\.js|.*\.md|.*\.ps1|.*\.sql|.*\.zip|.*\.log)$ - [F,L,NC]
+
+    # 4. The app page is a plain HTML file: serve it directly (no PHP, no session files needed)
+    RewriteRule ^$ public/index.html [L]
+
+    # 5. Everything else is served from public/
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
